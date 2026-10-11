@@ -1,4 +1,4 @@
-﻿namespace Notifications.API.Models;
+﻿namespace Notifications.API.DTOs;
 
 public class EnviarNotificacionRequest
 {
