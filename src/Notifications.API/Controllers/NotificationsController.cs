@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Notifications.API.DTOs;
 using Notifications.API.Models;
 
 namespace Notifications.API.Controllers;
