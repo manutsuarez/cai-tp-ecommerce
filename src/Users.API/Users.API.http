@@ -1,6 +1,23 @@
 @Users.API_HostAddress = http://localhost:5199
 
-GET {{Users.API_HostAddress}}/weatherforecast/
-Accept: application/json
+POST {{Users.API_HostAddress}}/api/users/register
+Content-Type: application/json
+
+{
+  "nombre": "María",
+  "apellido": "González",
+  "email": "maria@email.com",
+  "password": "MiPassword123!"
+}
+
+###
+
+POST {{Users.API_HostAddress}}/api/users/login
+Content-Type: application/json
+
+{
+  "email": "maria@email.com",
+  "password": "MiPassword123!"
+}
 
 ###
