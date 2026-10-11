@@ -40,12 +40,13 @@ public class OrdersController : ControllerBase
         {
             id = id,
             estado = request.Estado,
-            fechaActualizacion = DateTime.UtcNow
+            fechaActualizacion = new DateTime(2024, 3, 10, 12, 0, 0, DateTimeKind.Utc)
         };
         return Ok(respuesta);
     }
 
     // Arma una orden fija para devolver en los endpoints de prueba
+    // (valores copiados del ejemplo de la sección 4.3 del enunciado)
     private static Order CrearOrdenDeEjemplo()
     {
         OrderItem item = new OrderItem
@@ -57,11 +58,11 @@ public class OrdersController : ControllerBase
 
         Order orden = new Order
         {
-            Id = Guid.Parse("7c9e6679-7425-40de-944b-e07fc1f90ae7"),
-            UsuarioId = Guid.Parse("a1b2c3d4-e5f6-4789-a012-3456789abcde"),
+            Id = Guid.Parse("f1e2d3c4-0000-0000-0000-aabbccddeeff"),
+            UsuarioId = Guid.Parse("a1b2c3d4-0000-0000-0000-111122223333"),
             Total = 3000.00m,
             Estado = "Pendiente",
-            FechaCreacion = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc)
+            FechaCreacion = new DateTime(2024, 3, 10, 11, 0, 0, DateTimeKind.Utc)
         };
         orden.Items.Add(item);
         return orden;
