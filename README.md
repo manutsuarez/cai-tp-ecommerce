@@ -1,2 +1,212 @@
 # cai-tp-ecommerce
-TP Arquitectura de Microservicios - CAI
+
+Trabajo Práctico de CAI: **E-Commerce con arquitectura de microservicios** en C# / .NET 10.
+
+El sistema está formado por **5 microservicios independientes**, cada uno una REST API con su propia documentación en Swagger:
+
+| Servicio | Responsabilidad | Responsable |
+|---|---|---|
+| **Products.API** | Catálogo de productos: alta, baja, modificación y consulta (con filtros por categoría y nombre). | Manu |
+| **Users.API** | Registro y login de usuarios. Bloqueo por intentos fallidos. | Rodri |
+| **Orders.API** | Creación de órdenes y cambios de estado. Valida usuario, productos y stock. | Valen |
+| **Cart.API** | Carrito de compras de cada usuario: agregar, modificar, quitar y vaciar. | Rodri |
+| **Notifications.API** | Registro y envío simulado de notificaciones (Email, Push, SMS). | Manu |
+
+---
+
+## Arquitectura
+
+```
+                   Cliente (Swagger UI / archivos .http)
+                                    │
+                                    │  HTTP + JSON
+     ┌──────────────┬───────────────┼───────────────┬───────────────────┐
+     ▼              ▼               ▼               ▼                   ▼
+Products.API    Users.API      Orders.API       Cart.API      Notifications.API
+   :7172          :7198          :7088            :7017             :7223
+
+
+Llamadas internas entre servicios:
+
+   Orders.API ─────────► Users.API       ¿existe el usuario?
+   Orders.API ─────────► Products.API    ¿existen los productos? ¿hay stock?
+   Cart.API ───────────► Products.API    ¿existe el producto? ¿hay stock?
+   Notifications.API ──► Users.API       ¿existe el destinatario?
+   Products.API ───────► Orders.API      ¿el producto tiene órdenes activas?
+```
+
+**Llamadas entre servicios** (HTTP, con `IHttpClientFactory`):
+
+| Origen | Destino | Para qué | Error si falla |
+|---|---|---|---|
+| Orders | Users | Validar que el usuario exista al crear una orden | ORD-003 |
+| Orders | Products | Validar productos, stock y capturar el precio | ORD-004 / ORD-005 |
+| Cart | Products | Validar que el producto exista y que haya stock | CRT-002 / CRT-003 |
+| Notifications | Users | Validar que el destinatario exista | NTF-001 |
+| Products | Orders | Ver si el producto tiene órdenes activas antes de borrarlo | PRD-004 |
+
+Cada servicio tiene su propia carpeta y sus propias clases. No comparten código.
+
+---
+
+## Estructura del repositorio
+
+```
+cai-tp-ecommerce/
+├── MiniApi.slnx            # solución con todos los proyectos
+├── README.md
+├── docs/                   # reparto y fichas del equipo
+└── src/
+    ├── Products.API/
+    ├── Users.API/
+    ├── Orders.API/
+    ├── Cart.API/
+    └── Notifications.API/
+```
+
+Dentro de cada API:
+
+```
+<Servicio>.API/
+├── Controllers/   # endpoints
+├── DTOs/          # lo que entra (Request) y lo que sale (Response) de cada endpoint
+├── Models/        # entidades del dominio
+└── Program.cs     # configuración (Swagger, etc.)
+```
+
+---
+
+## Puertos
+
+| Servicio | HTTP | HTTPS | Swagger |
+|---|---|---|---|
+| Products.API | 5095 | 7172 | https://localhost:7172/swagger |
+| Users.API | 5199 | 7198 | https://localhost:7198/swagger |
+| Orders.API | 5298 | 7088 | https://localhost:7088/swagger |
+| Cart.API | 5230 | 7017 | https://localhost:7017/swagger |
+| Notifications.API | 5147 | 7223 | https://localhost:7223/swagger |
+
+Los puertos están definidos en `src/<Servicio>.API/Properties/launchSettings.json` de cada proyecto.
+
+---
+
+## Cómo ejecutar
+
+### Requisitos
+- **Visual Studio 2026** con la carga de trabajo *ASP.NET y desarrollo web* (Visual Studio 2022 no soporta .NET 10).
+- **SDK de .NET 10**.
+
+### Levantar un servicio
+1. Abrir `MiniApi.slnx` con Visual Studio.
+2. En el *Solution Explorer*, clic derecho sobre el servicio (por ejemplo `Users.API`) → **Set as Startup Project**.
+3. Ejecutar con el perfil **https** (botón verde ▶).
+4. La primera vez, aceptar el certificado de desarrollo HTTPS (**Yes**).
+5. Abrir en el navegador la URL de Swagger del servicio (ver tabla de puertos). El navegador no se abre solo.
+
+### Levantar varios servicios a la vez
+Clic derecho sobre la solución → **Configure Startup Projects…** → **Multiple startup projects** → poner en **Start** los servicios que se quieran levantar.
+
+### Probar sin Swagger
+Cada proyecto tiene un archivo `<Servicio>.API.http` con pedidos de ejemplo. Se abre en Visual Studio y se usa el link **Send request** que aparece arriba de cada pedido.
+
+---
+
+## Documentación de las APIs (Swagger)
+
+- Cada servicio expone **Swagger UI en `/swagger`** (con Swashbuckle.AspNetCore).
+- Cada endpoint está documentado con comentarios XML (`///`): descripción, parámetros, body y **todos los códigos de respuesta** con su `errorCode`.
+- Los DTOs tienen **ejemplos** con los mismos valores que los ejemplos del enunciado.
+- Los endpoints se agrupan por servicio (tag).
+
+---
+
+## Formato de las respuestas de error
+
+Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, con dos campos propios obligatorios: `errorCode` y `errorMessage`.
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc7231#section-6.5.4",
+  "title": "Not Found",
+  "status": 404,
+  "detail": "El recurso solicitado no fue encontrado.",
+  "instance": "/api/products/99",
+  "errorCode": "PRD-001",
+  "errorMessage": "Producto no encontrado."
+}
+```
+
+---
+
+## Códigos de error
+
+### Products.API
+| errorCode | HTTP | errorMessage | Cuándo se devuelve |
+|---|---|---|---|
+| PRD-001 | 404 | Producto no encontrado. | GET/PUT/DELETE cuando el ID no existe. |
+| PRD-002 | 400 | Los datos del producto son inválidos. | POST/PUT con campos faltantes o formato incorrecto. |
+| PRD-003 | 409 | Ya existe un producto con ese nombre en la categoría. | POST cuando se intenta crear un duplicado. |
+| PRD-004 | 409 | El producto tiene órdenes activas y no puede eliminarse. | DELETE cuando hay órdenes Pendiente o Confirmada que lo referencian. |
+| PRD-005 | 500 | Error interno al procesar el producto. | Error inesperado en servicio o persistencia. |
+
+### Users.API
+| errorCode | HTTP | errorMessage | Cuándo se devuelve |
+|---|---|---|---|
+| USR-001 | 409 | El email ya está registrado. | POST /register cuando el email ya existe. |
+| USR-002 | 400 | Los datos del usuario son inválidos. | POST /register con campos faltantes o formato incorrecto. |
+| USR-003 | 401 | Credenciales incorrectas. | POST /login cuando email o contraseña no coinciden. |
+| USR-004 | 403 | Usuario bloqueado por demasiados intentos fallidos. | POST /login con 3 o más intentos fallidos acumulados. |
+| USR-005 | 403 | Usuario bloqueado por detección de fraude. | POST /login cuando el usuario fue bloqueado manualmente. |
+| USR-006 | 500 | Error interno al procesar el usuario. | Error inesperado en servicio o persistencia. |
+
+### Orders.API
+| errorCode | HTTP | errorMessage | Cuándo se devuelve |
+|---|---|---|---|
+| ORD-001 | 404 | Orden no encontrada. | GET/PUT cuando el ID de orden no existe. |
+| ORD-002 | 400 | Los datos de la orden son inválidos. | POST con campos faltantes o lista de items vacía. |
+| ORD-003 | 404 | Usuario no encontrado al crear la orden. | POST cuando el UsuarioId no existe en Users API. |
+| ORD-004 | 404 | Producto no encontrado al crear la orden. | POST cuando algún ProductoId no existe en Products API. |
+| ORD-005 | 422 | Stock insuficiente para uno o más productos. | POST cuando la cantidad solicitada supera el stock disponible. |
+| ORD-006 | 409 | El estado de la orden no puede ser modificado. | PUT /status cuando la transición de estado no es válida. |
+| ORD-007 | 500 | Error interno al procesar la orden. | Error inesperado en servicio o persistencia. |
+
+### Cart.API
+| errorCode | HTTP | errorMessage | Cuándo se devuelve |
+|---|---|---|---|
+| CRT-001 | 404 | Carrito no encontrado. | GET/PUT/DELETE cuando el userId no tiene carrito activo. |
+| CRT-002 | 404 | Producto no encontrado. | POST/PUT cuando el ProductoId no existe en Products API. |
+| CRT-003 | 422 | Stock insuficiente para agregar al carrito. | POST/PUT cuando la cantidad supera el stock disponible. |
+| CRT-004 | 400 | Cantidad inválida. | POST/PUT cuando la cantidad es menor o igual a cero. |
+| CRT-005 | 500 | Error interno al procesar el carrito. | Error inesperado en servicio o persistencia. |
+
+### Notifications.API
+| errorCode | HTTP | errorMessage | Cuándo se devuelve |
+|---|---|---|---|
+| NTF-001 | 404 | Usuario no encontrado. | POST cuando el UsuarioId no existe en Users API. |
+| NTF-002 | 400 | Los datos de la notificación son inválidos. | POST con campos faltantes o tipo no reconocido. |
+| NTF-003 | 404 | No se encontraron notificaciones para el usuario. | GET cuando el userId no tiene notificaciones registradas. |
+| NTF-004 | 500 | Error interno al procesar la notificación. | Error inesperado en servicio o persistencia. |
+
+---
+
+## Decisiones y supuestos
+
+Decisiones tomadas por el equipo donde el enunciado no define algo, o lo deja abierto.
+
+| Fecha | Decisión | Motivo |
+|---|---|---|
+| 07/10/2026 | Se usan **controladores** (no Minimal API). | El enunciado pide la carpeta `Controllers/` y comentarios XML en controladores. |
+| 07/10/2026 | Los IDs son **Guid**. El JSON usa nombres en **español y camelCase**. | Así aparecen en los ejemplos del enunciado. |
+| 11/10/2026 | Las colecciones (`Items` de Cart y Order) son **`List<T>`** en vez de arrays. | A carritos y órdenes se les agregan y quitan elementos. |
+| 11/10/2026 | Los endpoints **devuelven DTOs**, nunca los modelos directamente. | Controlar qué datos salen; por ejemplo, `PasswordHash` nunca aparece en una respuesta. |
+| 11/10/2026 | Por ahora los endpoints devuelven **respuestas fijas** copiadas de los ejemplos del enunciado. | La librería de persistencia de la cátedra todavía no está disponible. |
+| 11/10/2026 | Swagger con **Swashbuckle.AspNetCore 10.3.0**, habilitado en el entorno Development. Se usa una lambda solo para configurarlo. | Es la librería que pide el enunciado; la lambda es la forma estándar de configurarla. |
+| 11/10/2026 | `POST /api/users/login` con datos inválidos (400) → **USR-002**. | El enunciado lista el 400 pero no le asigna un código. Se reutiliza el de "datos inválidos" del mismo servicio. |
+| 11/10/2026 | `DELETE /api/cart/{userId}/items/{productId}` cuando falla (404) → **CRT-001**. | El enunciado no asigna un código para quitar un producto que no está en el carrito. |
+
+### Consultas pendientes con la cátedra
+- ¿Dónde está la **librería de persistencia**? ¿Es la de SQLite + Dapper del repo de ejemplo o un paquete aparte?
+- ¿Se acepta la solución en formato **`.slnx`**, o hace falta `.sln` (y llamarla `ECommerce`)?
+- ¿Las restricciones de la guía de ejercicios (sin LINQ, lambdas, `Dictionary`) aplican al TP?
+
+<!-- PENDIENTE: agregar la sección "Capturas de Swagger" con ejemplos de respuestas de error (errorCode / errorMessage) cuando esté implementado el manejo de errores. -->
