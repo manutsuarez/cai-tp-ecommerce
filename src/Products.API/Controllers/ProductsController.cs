@@ -26,14 +26,28 @@ public class ProductsController : ControllerBase
     [HttpPost]
     public IActionResult Crear(Product producto)
     {
-        return StatusCode(StatusCodes.Status201Created, CrearProductoEjemplo());
+        Product respuesta = new Product();
+        respuesta.Id = Guid.Parse("3fa85f64-5717-4562-b3fc-2c963f66afa6");
+        respuesta.Nombre = producto.Nombre;
+        respuesta.Descripcion = producto.Descripcion;
+        respuesta.Precio = producto.Precio;
+        respuesta.Stock = producto.Stock;
+        respuesta.Categoria = producto.Categoria;
+        respuesta.FechaCreacion = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc);
+        return StatusCode(StatusCodes.Status201Created, respuesta);
     }
 
     [HttpPut("{id}")]
     public IActionResult Actualizar(Guid id, Product producto)
     {
-        Product respuesta = CrearProductoEjemplo();
+        Product respuesta = new Product();
         respuesta.Id = id;
+        respuesta.Nombre = producto.Nombre;
+        respuesta.Descripcion = producto.Descripcion;
+        respuesta.Precio = producto.Precio;
+        respuesta.Stock = producto.Stock;
+        respuesta.Categoria = producto.Categoria;
+        respuesta.FechaCreacion = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc);
         return Ok(respuesta);
     }
 
