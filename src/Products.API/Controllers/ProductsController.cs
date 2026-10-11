@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Products.API.DTOs;
 using Products.API.Models;
 
 namespace Products.API.Controllers;
@@ -24,7 +25,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPost]
-    public IActionResult Crear(Product producto)
+    public IActionResult Crear(ProductRequest producto)
     {
         Product respuesta = new Product();
         respuesta.Id = Guid.Parse("3fa85f64-5717-4562-b3fc-2c963f66afa6");
@@ -38,7 +39,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPut("{id}")]
-    public IActionResult Actualizar(Guid id, Product producto)
+    public IActionResult Actualizar(Guid id, ProductRequest producto)
     {
         Product respuesta = new Product();
         respuesta.Id = id;
