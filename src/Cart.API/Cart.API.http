@@ -1,6 +1,33 @@
 @Cart.API_HostAddress = http://localhost:5230
 
-GET {{Cart.API_HostAddress}}/weatherforecast/
-Accept: application/json
+
+GET {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333
+
+###
+
+POST {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items
+Content-Type: application/json
+
+{
+  "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "cantidad": 2
+}
+
+###
+
+PUT {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items/3fa85f64-5717-4562-b3fc-2c963f66afa6
+Content-Type: application/json
+
+{
+  "cantidad": 4
+}
+
+###
+
+DELETE {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items/3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+###
+
+DELETE {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333
 
 ###
