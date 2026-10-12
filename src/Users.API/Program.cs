@@ -1,3 +1,6 @@
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using users.API.HealthChecks;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -12,6 +15,10 @@ builder.Services.AddSwaggerGen(options =>
     string xmlFile = typeof(Program).Assembly.GetName().Name + ".xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
 });
+
+// Health checks: el servicio informa si está vivo y listo
+builder.Services.AddHealthChecks()
+    .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" });
 
 var app = builder.Build();
 
@@ -28,5 +35,22 @@ app.UseHttpsRedirection();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapHealthChecks("/health", new HealthCheckOptions
+{
+    ResponseWriter = HealthCheckHelpers.Escribir
+});
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = HealthCheckHelpers.SoloReady,
+    ResponseWriter = HealthCheckHelpers.Escribir
+});
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = HealthCheckHelpers.SoloLive,
+    ResponseWriter = HealthCheckHelpers.Escribir
+});
 
 app.Run();
