@@ -1,6 +1,6 @@
-﻿namespace Products.API.Exceptions
+﻿namespace Products.API.Exceptions;
+
+public class BusinessRuleException(string errorCode, string message) : Exception(message)
 {
-    public class BusinessRuleException
-    {
-    }
+    public string ErrorCode { get; } = errorCode;
 }
