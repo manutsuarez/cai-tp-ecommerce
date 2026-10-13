@@ -36,11 +36,11 @@ public class OrdersController : ControllerBase
     [HttpPut("{id}/status")]
     public IActionResult ActualizarEstado(Guid id, [FromBody] UpdateOrderStatusRequest request)
     {
-        var respuesta = new
+        OrderStatusResponse respuesta = new OrderStatusResponse
         {
-            id = id,
-            estado = request.Estado,
-            fechaActualizacion = new DateTime(2024, 3, 10, 12, 0, 0, DateTimeKind.Utc)
+            Id = id,
+            Estado = request.Estado,
+            FechaActualizacion = new DateTime(2024, 3, 10, 12, 0, 0, DateTimeKind.Utc)
         };
         return Ok(respuesta);
     }
