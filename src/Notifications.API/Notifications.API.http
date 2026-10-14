@@ -13,3 +13,8 @@ Content-Type: application/json
 ### Listar las notificaciones de un usuario
 GET {{Notifications.API_HostAddress}}/api/notifications/a1b2c3d4-0000-0000-0000-111122223333
 Accept: application/json
+
+### Health check con un Correlation ID propio
+GET https://localhost:7223/health
+Accept: application/json
+X-Correlation-Id: mi-id-de-prueba-123
