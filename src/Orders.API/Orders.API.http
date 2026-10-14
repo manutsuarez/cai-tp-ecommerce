@@ -4,3 +4,8 @@ GET {{Orders.API_HostAddress}}/weatherforecast/
 Accept: application/json
 
 ###
+
+### Health check con un Correlation ID propio
+GET https://localhost:7088/health
+Accept: application/json
+X-Correlation-Id: mi-id-de-prueba-123
