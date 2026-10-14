@@ -31,3 +31,8 @@ DELETE {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/it
 DELETE {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333
 
 ###
+
+### Health check con un Correlation ID propio
+GET https://localhost:7017/health
+Accept: application/json
+X-Correlation-Id: mi-id-de-prueba-123
