@@ -1,7 +1,26 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Users.API.HealthChecks;
+using Users.API.Logging;
+using Serilog;
+using Serilog.Events;
+using Serilog.Formatting.Json;
+using Users.API.HealthChecks;
+using Users.API.Logging;
+
+// Serilog se configura primero, antes que cualquier otra cosa.
+// Consola: formato legible. Archivo: JSON estructurado (carpeta logs/).
+Log.Logger = new LoggerConfiguration()
+    .MinimumLevel.Information()
+    .MinimumLevel.Override("Microsoft.AspNetCore", LogEventLevel.Warning)
+    .Enrich.FromLogContext()
+    .Enrich.WithProperty("Servicio", "Users.API")
+    .WriteTo.Console(outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{Servicio:l}] [{CorrelationId:l}] {Message:lj}{NewLine}{Exception}")
+    .WriteTo.File(new JsonFormatter(renderMessage: true), "logs/users-.json", rollingInterval: RollingInterval.Day)
+    .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Host.UseSerilog();
 
 // Add services to the container.
 
@@ -21,6 +40,11 @@ builder.Services.AddHealthChecks()
     .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" });
 
 var app = builder.Build();
+
+// Correlation ID y log de cada request (con su duración).
+// IMPORTANTE: el UseExceptionHandler() de los errores tiene que ir DESPUÉS de estas dos líneas.
+app.UseMiddleware<CorrelationIdMiddleware>();
+app.UseSerilogRequestLogging();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
