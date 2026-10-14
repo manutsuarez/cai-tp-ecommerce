@@ -34,3 +34,8 @@ Content-Type: application/json
 
 ### Eliminar un producto
 DELETE {{Products.API_HostAddress}}/api/products/3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+### Listar productos con un Correlation ID propio
+GET {{Products.API_HostAddress}}/api/products
+Accept: application/json
+X-Correlation-Id: mi-id-de-prueba-123

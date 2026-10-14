@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using users.API.HealthChecks;
+using Users.API.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 

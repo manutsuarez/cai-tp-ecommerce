@@ -1,7 +1,7 @@
 ﻿using System.Text.Json;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace users.API.HealthChecks;
+namespace Users.API.HealthChecks;
 
 public static class HealthCheckHelpers
 {
@@ -18,7 +18,7 @@ public static class HealthCheckHelpers
         var respuesta = new
         {
             status = reporte.Status.ToString(),
-            servicio = "users.API",
+            servicio = "Users.API",
             checks = detalle
         };
 
