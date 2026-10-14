@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using orders.API.HealthChecks;
+using Orders.API.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
 
