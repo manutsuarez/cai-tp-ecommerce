@@ -1,4 +1,4 @@
-using cart.API.HealthChecks;
+using Cart.API.HealthChecks;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 
 var builder = WebApplication.CreateBuilder(args);
