@@ -25,10 +25,17 @@ public class CorrelationIdMiddleware
         context.Items[HeaderName] = correlationId;
         context.Response.OnStarting(AgregarHeaderEnRespuesta, context);
 
+        string endpoint = context.Request.Method + " " + context.Request.Path.Value;
+
         using (LogContext.PushProperty("CorrelationId", correlationId))
+        using (LogContext.PushProperty("Endpoint", endpoint))
         {
-            Log.Information("Inicio de request {Metodo} {Ruta}", context.Request.Method, context.Request.Path.Value);
-            await _next(context);
+
+
+            {
+                Log.Information("Inicio de request {Metodo} {Ruta}", context.Request.Method, context.Request.Path.Value);
+                await _next(context);
+            }
         }
     }
 
