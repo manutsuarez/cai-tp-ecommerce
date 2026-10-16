@@ -68,10 +68,15 @@ Dentro de cada API:
 
 ```
 <Servicio>.API/
-├── Controllers/   # endpoints
-├── DTOs/          # lo que entra (Request) y lo que sale (Response) de cada endpoint
-├── Models/        # entidades del dominio
-└── Program.cs     # configuración (Swagger, etc.)
+├── Controllers/        # endpoints
+├── DTOs/               # lo que entra (Request) y lo que sale (Response) de cada endpoint
+├── Models/             # entidades del dominio
+├── Exceptions/         # excepciones de dominio y códigos de error
+├── ExceptionHandlers/  # un IExceptionHandler por tipo de excepción
+├── HealthChecks/       # chequeos de salud del servicio
+├── Logging/            # middleware de Correlation ID
+├── logs/               # archivos de log (se generan al ejecutar; no se suben al repo)
+└── Program.cs          # configuración (Serilog, Swagger, health checks, etc.)
 ```
 
 ---
@@ -117,6 +122,51 @@ Cada proyecto tiene un archivo `<Servicio>.API.http` con pedidos de ejemplo. Se 
 - Cada endpoint está documentado con comentarios XML (`///`): descripción, parámetros, body y **todos los códigos de respuesta** con su `errorCode`.
 - Los DTOs tienen **ejemplos** con los mismos valores que los ejemplos del enunciado.
 - Los endpoints se agrupan por servicio (tag).
+
+---
+
+## Health checks
+
+Cada servicio expone tres endpoints de salud. Responden en JSON con el estado `Healthy`, `Degraded` o `Unhealthy`.
+
+| Endpoint | Para qué sirve |
+|---|---|
+| `GET /health` | Estado general del servicio (todos los chequeos). |
+| `GET /health/ready` | ¿Está **listo** para recibir pedidos? |
+| `GET /health/live` | ¿Está **vivo** (el proceso responde)? |
+
+Ejemplo de respuesta (`https://localhost:7172/health`):
+
+```json
+{
+  "status": "Healthy",
+  "servicio": "Products.API",
+  "checks": {
+    "api": "Healthy"
+  }
+}
+```
+
+---
+
+## Logs y Correlation ID
+
+Los logs se generan con **Serilog** en dos lugares:
+
+| Destino | Formato | Dónde |
+|---|---|---|
+| **Consola** | Legible: `[hora NIVEL] [Servicio] [CorrelationId] mensaje` | La ventana que se abre al ejecutar el servicio. |
+| **Archivo** | JSON estructurado, un archivo por día | `src/<Servicio>.API/logs/<servicio>-AAAAMMDD.json` (por ejemplo `logs/products-20261015.json`). |
+
+Cada log incluye fecha y hora, nivel, servicio, endpoint y Correlation ID. Se registra el inicio y el fin de cada request, con su duración.
+
+**Correlation ID:** cada request tiene un identificador único que permite seguirla en los logs.
+
+- Si el pedido trae el header **`X-Correlation-Id`**, se usa ese valor. Si no, el servicio genera uno nuevo.
+- El servicio lo devuelve en el header **`X-Correlation-Id`** de la respuesta (se puede ver en Swagger, en *Response headers*).
+- Todos los logs de esa request llevan el mismo Correlation ID.
+
+Para probarlo, los archivos `.http` de Users, Cart, Orders y Notifications tienen un pedido a `/health` que manda un Correlation ID propio. También se puede ver en Swagger, en los *Response headers* de cualquier respuesta.
 
 ---
 
@@ -203,6 +253,7 @@ Decisiones tomadas por el equipo donde el enunciado no define algo, o lo deja ab
 | 11/10/2026 | Swagger con **Swashbuckle.AspNetCore 10.3.0**, habilitado en el entorno Development. Se usa una lambda solo para configurarlo. | Es la librería que pide el enunciado; la lambda es la forma estándar de configurarla. |
 | 11/10/2026 | `POST /api/users/login` con datos inválidos (400) → **USR-002**. | El enunciado lista el 400 pero no le asigna un código. Se reutiliza el de "datos inválidos" del mismo servicio. |
 | 11/10/2026 | `DELETE /api/cart/{userId}/items/{productId}` cuando falla (404) → **CRT-001**. | El enunciado no asigna un código para quitar un producto que no está en el carrito. |
+| 15/10/2026 | `PUT /api/orders/{id}/status` con datos inválidos (400) → **ORD-002**. El 409 de `POST /api/orders` queda documentado sin `errorCode`. | El enunciado lista esos códigos HTTP pero no les asigna un `errorCode`. |
 
 ### Consultas pendientes con la cátedra
 - ¿Dónde está la **librería de persistencia**? ¿Es la de SQLite + Dapper del repo de ejemplo o un paquete aparte?
