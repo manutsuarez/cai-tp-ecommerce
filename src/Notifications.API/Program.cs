@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Notifications.API.HealthChecks;
 using Notifications.API.Logging;
-using Notifications.API.HealthChecks;
-using Notifications.API.Logging;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
