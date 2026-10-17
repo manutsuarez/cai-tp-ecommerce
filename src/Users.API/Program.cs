@@ -4,8 +4,6 @@ using Users.API.Logging;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
-using Users.API.HealthChecks;
-using Users.API.Logging;
 
 // Serilog se configura primero, antes que cualquier otra cosa.
 // Consola: formato legible. Archivo: JSON estructurado (carpeta logs/).

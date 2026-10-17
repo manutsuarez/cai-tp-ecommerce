@@ -1,8 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Orders.API.HealthChecks;
 using Orders.API.Logging;
-using Orders.API.HealthChecks;
-using Orders.API.Logging;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;

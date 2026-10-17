@@ -1,8 +1,6 @@
 using Cart.API.HealthChecks;
 using Cart.API.Logging;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Cart.API.HealthChecks;
-using Cart.API.Logging;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
