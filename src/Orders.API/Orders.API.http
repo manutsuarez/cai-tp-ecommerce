@@ -1,11 +1,45 @@
-@Orders.API_HostAddress = http://localhost:5298
+@Orders.API_HostAddress = https://localhost:7088
 
-GET {{Orders.API_HostAddress}}/weatherforecast/
+### Listar órdenes
+GET {{Orders.API_HostAddress}}/api/orders
 Accept: application/json
 
-###
+### Obtener una orden por id
+GET {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff
+Accept: application/json
+
+### Crear una orden
+POST {{Orders.API_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
+  "items": [
+    {
+      "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+      "cantidad": 2
+    }
+  ]
+}
+
+### Crear una orden con un usuarioId inválido (400)
+POST {{Orders.API_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "usuarioId": "no-es-un-guid",
+  "items": []
+}
+
+### Actualizar el estado de una orden
+PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/status
+Content-Type: application/json
+
+{
+  "estado": "Confirmada"
+}
 
 ### Health check con un Correlation ID propio
-GET https://localhost:7088/health
+GET {{Orders.API_HostAddress}}/health
 Accept: application/json
 X-Correlation-Id: mi-id-de-prueba-123
