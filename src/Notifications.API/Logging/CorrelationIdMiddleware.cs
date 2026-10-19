@@ -30,12 +30,11 @@ public class CorrelationIdMiddleware
         using (LogContext.PushProperty("CorrelationId", correlationId))
         using (LogContext.PushProperty("Endpoint", endpoint))
         {
-            {
-                Log.Information("Inicio de request {Metodo} {Ruta}", context.Request.Method, context.Request.Path.Value);
-                await _next(context);
-            }
+            Log.Information("Inicio de request {Metodo} {Ruta}", context.Request.Method, context.Request.Path.Value);
+            await _next(context);
         }
     }
+
     private static Task AgregarHeaderEnRespuesta(object estado)
     {
         HttpContext contexto = (HttpContext)estado;
