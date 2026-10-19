@@ -39,3 +39,8 @@ DELETE {{Products.API_HostAddress}}/api/products/3fa85f64-5717-4562-b3fc-2c963f6
 GET {{Products.API_HostAddress}}/api/products
 Accept: application/json
 X-Correlation-Id: mi-id-de-prueba-123
+
+### Health check con un Correlation ID propio
+GET {{Products.API_HostAddress}}/health
+Accept: application/json
+X-Correlation-Id: mi-id-de-prueba-123
