@@ -1,4 +1,6 @@
-﻿namespace Cart.API.DTOs;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace Cart.API.DTOs;
 
 /// <summary>
 /// Producto y cantidad para agregar al carrito.
@@ -11,5 +13,6 @@ public class AddCartItemRequest
 
     /// <summary>Cantidad a agregar. Debe ser mayor a 0.</summary>
     /// <example>2</example>
+    [Range(1, int.MaxValue, ErrorMessage = "Cantidad inválida. Debe ser mayor a 0.")]
     public int Cantidad { get; set; }
 }
