@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc;
+using Products.API.DTOs;
 using Products.API.ExceptionHandlers;
+using Products.API.Exceptions;
 using Products.API.HealthChecks;
 using Products.API.Logging;
 using Serilog;
@@ -23,7 +26,38 @@ builder.Host.UseSerilog();
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            List<string> mensajes = new List<string>();
+            foreach (var entrada in context.ModelState.Values)
+            {
+                foreach (var error in entrada.Errors)
+                {
+                    mensajes.Add(error.ErrorMessage);
+                }
+            }
+
+            ErrorResponse respuesta = new ErrorResponse
+            {
+                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "Los datos enviados son inválidos.",
+                Instance = context.HttpContext.Request.Path.Value,
+                ErrorCode = ErrorCodes.PRD_002,
+                ErrorMessage = string.Join("; ", mensajes),
+                CorrelationId = context.HttpContext.Items["X-Correlation-Id"] as string
+            };
+
+            return new ObjectResult(respuesta)
+            {
+                StatusCode = StatusCodes.Status400BadRequest
+            };
+        };
+    });
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
