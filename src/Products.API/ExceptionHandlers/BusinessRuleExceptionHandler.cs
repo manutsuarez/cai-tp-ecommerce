@@ -1,5 +1,4 @@
-﻿
-using Microsoft.AspNetCore.Diagnostics;
+﻿using Microsoft.AspNetCore.Diagnostics;
 using Products.API.DTOs;
 using Products.API.Exceptions;
 
@@ -22,10 +21,11 @@ public class BusinessRuleExceptionHandler : IExceptionHandler
             Type = "https://tools.ietf.org/html/rfc7231#section-6.5.9",
             Title = "Conflict",
             Status = StatusCodes.Status409Conflict,
-            Detail = "No se pudo completar la operación.",
+            Detail = "Ya existe un recurso con esos datos.",
             Instance = httpContext.Request.Path.Value,
             ErrorCode = ex.ErrorCode,
-            ErrorMessage = ex.Message
+            ErrorMessage = ex.Message,
+            CorrelationId = httpContext.Items["X-Correlation-Id"] as string
         };
 
         httpContext.Response.StatusCode = respuesta.Status;
