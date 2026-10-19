@@ -28,7 +28,8 @@ public class BusinessRuleExceptionHandler : IExceptionHandler
                 Detail = "No se puede procesar la solicitud.",
                 Instance = httpContext.Request.Path.Value,
                 ErrorCode = ex.ErrorCode,
-                ErrorMessage = ex.Message
+                ErrorMessage = ex.Message,
+                CorrelationId = httpContext.Items["X-Correlation-Id"] as string
             };
         }
         else
@@ -41,7 +42,8 @@ public class BusinessRuleExceptionHandler : IExceptionHandler
                 Detail = "No se puede modificar el estado.",
                 Instance = httpContext.Request.Path.Value,
                 ErrorCode = ex.ErrorCode,
-                ErrorMessage = ex.Message
+                ErrorMessage = ex.Message,
+                CorrelationId = httpContext.Items["X-Correlation-Id"] as string
             };
         }
 
