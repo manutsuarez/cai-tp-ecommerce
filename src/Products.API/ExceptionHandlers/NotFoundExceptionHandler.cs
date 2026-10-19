@@ -24,7 +24,8 @@ public class NotFoundExceptionHandler : IExceptionHandler
             Detail = "El recurso solicitado no fue encontrado.",
             Instance = httpContext.Request.Path.Value,
             ErrorCode = ex.ErrorCode,
-            ErrorMessage = ex.Message
+            ErrorMessage = ex.Message,
+            CorrelationId = httpContext.Items["X-Correlation-Id"] as string
         };
 
         httpContext.Response.StatusCode = respuesta.Status;

@@ -24,7 +24,8 @@ public class ValidationExceptionHandler : IExceptionHandler
             Detail = "Los datos enviados son inválidos.",
             Instance = httpContext.Request.Path.Value,
             ErrorCode = ex.ErrorCode,
-            ErrorMessage = ex.Message
+            ErrorMessage = ex.Message,
+            CorrelationId = httpContext.Items["X-Correlation-Id"] as string
         };
 
         httpContext.Response.StatusCode = respuesta.Status;

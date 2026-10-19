@@ -9,4 +9,5 @@ public class ErrorResponse
     public string? Instance { get; set; }
     public string ErrorCode { get; set; } = string.Empty;
     public string ErrorMessage { get; set; } = string.Empty;
+    public string? CorrelationId { get; set; }
 }

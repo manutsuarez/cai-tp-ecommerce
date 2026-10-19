@@ -25,7 +25,8 @@ public class GlobalExceptionHandler(IHostEnvironment environment) : IExceptionHa
             Detail = detalle,
             Instance = httpContext.Request.Path.Value,
             ErrorCode = ErrorCodes.PRD_005,
-            ErrorMessage = "Error interno al procesar el producto."
+            ErrorMessage = "Error interno al procesar el producto.",
+            CorrelationId = httpContext.Items["X-Correlation-Id"] as string
         };
 
         httpContext.Response.StatusCode = respuesta.Status;
