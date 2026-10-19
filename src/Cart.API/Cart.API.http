@@ -36,3 +36,33 @@ DELETE {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333
 GET https://localhost:7017/health
 Accept: application/json
 X-Correlation-Id: mi-id-de-prueba-123
+
+### Error 404 CRT-001: carrito no encontrado
+GET {{Cart.API_HostAddress}}/api/cart/00000000-0000-0000-0000-000000000000
+
+### Error 404 CRT-002: producto no encontrado
+POST {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items
+Content-Type: application/json
+
+{
+  "productoId": "00000000-0000-0000-0000-000000000000",
+  "cantidad": 2
+}
+
+### Error 422 CRT-003: stock insuficiente
+POST {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items
+Content-Type: application/json
+
+{
+  "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "cantidad": 50
+}
+
+### Error 400 CRT-004: cantidad inválida
+POST {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items
+Content-Type: application/json
+
+{
+  "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+  "cantidad": 0
+}

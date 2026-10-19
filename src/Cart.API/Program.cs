@@ -1,6 +1,10 @@
+using Cart.API.DTOs;
+using Cart.API.ExceptionHandlers;
+using Cart.API.Exceptions;
 using Cart.API.HealthChecks;
 using Cart.API.Logging;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Mvc;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
@@ -22,7 +26,39 @@ builder.Host.UseSerilog();
 
 // Add services to the container.
 
-builder.Services.AddControllers();
+// Si los datos que llegan no pasan las validaciones, se responde 400 con CRT-004
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            List<string> mensajes = new List<string>();
+            foreach (var entrada in context.ModelState.Values)
+            {
+                foreach (var error in entrada.Errors)
+                {
+                    mensajes.Add(error.ErrorMessage);
+                }
+            }
+
+            ErrorResponse respuesta = new ErrorResponse
+            {
+                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
+                Title = "Bad Request",
+                Status = StatusCodes.Status400BadRequest,
+                Detail = "Los datos enviados son inválidos.",
+                Instance = context.HttpContext.Request.Path.Value,
+                ErrorCode = ErrorCodes.CRT_004,
+                ErrorMessage = string.Join("; ", mensajes),
+                CorrelationId = context.HttpContext.Items["X-Correlation-Id"] as string
+            };
+
+            return new ObjectResult(respuesta)
+            {
+                StatusCode = StatusCodes.Status400BadRequest
+            };
+        };
+    });
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
@@ -37,12 +73,21 @@ builder.Services.AddSwaggerGen(options =>
 builder.Services.AddHealthChecks()
     .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" });
 
+// Manejo de errores: del más específico al más genérico (el Global va al final)
+builder.Services.AddExceptionHandler<NotFoundExceptionHandler>();
+builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
+builder.Services.AddExceptionHandler<BusinessRuleExceptionHandler>();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+builder.Services.AddProblemDetails();
+
 var app = builder.Build();
 
 // Correlation ID y log de cada request (con su duración).
 // IMPORTANTE: el UseExceptionHandler() de los errores tiene que ir DESPUÉS de estas dos líneas.
 app.UseMiddleware<CorrelationIdMiddleware>();
 app.UseSerilogRequestLogging();
+
+app.UseExceptionHandler();
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

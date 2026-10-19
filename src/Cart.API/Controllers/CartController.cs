@@ -1,16 +1,24 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Cart.API.DTOs;
+using Cart.API.Exceptions;
 
 namespace Cart.API.Controllers;
 
 /// <summary>
 /// Gestión del carrito de compras de cada usuario.
 /// </summary>
+/// <remarks>
+/// Datos para probar errores (respuestas de prueba): userId todo ceros → CRT-001;
+/// productoId todo ceros → CRT-002; cantidad mayor a 10 → CRT-003; cantidad 0 o negativa → CRT-004.
+/// </remarks>
 [ApiController]
 [Route("api/cart")]
 [Produces("application/json")]
 public class CartController : ControllerBase
 {
+    // Stock simulado mientras no haya conexión real con Products API
+    private const int StockSimulado = 10;
+
     /// <summary>
     /// Obtiene el carrito de un usuario.
     /// </summary>
@@ -20,10 +28,12 @@ public class CartController : ControllerBase
     /// <response code="500">CRT-005: Error interno al procesar el carrito.</response>
     [HttpGet("{userId}")]
     [ProducesResponseType(typeof(CartResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult GetCart(Guid userId)
     {
+        ValidarCarritoExiste(userId);
+
         CartResponse response = new CartResponse
         {
             UsuarioId = new Guid("a1b2c3d4-0000-0000-0000-111122223333"),
@@ -50,12 +60,15 @@ public class CartController : ControllerBase
     /// <response code="500">CRT-005: Error interno al procesar el carrito.</response>
     [HttpPost("{userId}/items")]
     [ProducesResponseType(typeof(CartResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult AddItem(Guid userId, AddCartItemRequest request)
     {
+        ValidarProductoExiste(request.ProductoId);
+        ValidarStock(request.Cantidad);
+
         CartResponse response = new CartResponse
         {
             UsuarioId = new Guid("a1b2c3d4-0000-0000-0000-111122223333"),
@@ -82,12 +95,16 @@ public class CartController : ControllerBase
     /// <response code="500">CRT-005: Error interno al procesar el carrito.</response>
     [HttpPut("{userId}/items/{productId}")]
     [ProducesResponseType(typeof(CartResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult UpdateItem(Guid userId, Guid productId, UpdateCartItemRequest request)
     {
+        ValidarCarritoExiste(userId);
+        ValidarProductoExiste(productId);
+        ValidarStock(request.Cantidad);
+
         CartResponse response = new CartResponse
         {
             UsuarioId = new Guid("a1b2c3d4-0000-0000-0000-111122223333"),
@@ -111,10 +128,11 @@ public class CartController : ControllerBase
     /// <response code="500">CRT-005: Error interno al procesar el carrito.</response>
     [HttpDelete("{userId}/items/{productId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult RemoveItem(Guid userId, Guid productId)
     {
+        ValidarCarritoExiste(userId);
         return NoContent();
     }
 
@@ -127,10 +145,38 @@ public class CartController : ControllerBase
     /// <response code="500">CRT-005: Error interno al procesar el carrito.</response>
     [HttpDelete("{userId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult ClearCart(Guid userId)
     {
+        ValidarCarritoExiste(userId);
         return NoContent();
+    }
+
+    // --- Validaciones de prueba (se reemplazan cuando haya lógica real) ---
+
+    private static void ValidarCarritoExiste(Guid userId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new NotFoundException(ErrorCodes.CRT_001, "Carrito no encontrado.");
+        }
+    }
+
+    private static void ValidarProductoExiste(Guid productoId)
+    {
+        if (productoId == Guid.Empty)
+        {
+            throw new NotFoundException(ErrorCodes.CRT_002, "Producto no encontrado.");
+        }
+    }
+
+    private static void ValidarStock(int cantidad)
+    {
+        if (cantidad > StockSimulado)
+        {
+            throw new BusinessRuleException(ErrorCodes.CRT_003,
+                "Stock insuficiente. Disponible: " + StockSimulado + ", solicitado: " + cantidad + ".");
+        }
     }
 }
