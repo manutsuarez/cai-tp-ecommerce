@@ -81,7 +81,8 @@ builder.Services.AddHttpClient<OrdersClient>()
 
 // Health checks: el servicio informa si está vivo y listo
 builder.Services.AddHealthChecks()
-    .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" });
+    .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" })
+    .AddCheck<OrdersHealthCheck>("orders", tags: new[] { "ready" });
 
 builder.Services.AddExceptionHandler<NotFoundExceptionHandler>();
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
