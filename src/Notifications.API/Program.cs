@@ -6,6 +6,7 @@ using Notifications.API.Exceptions;
 using Notifications.API.HealthChecks;
 using Notifications.API.Logging;
 using Notifications.API.Swagger; // NUEVO
+using Notifications.API.Clients;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
@@ -71,6 +72,12 @@ builder.Services.AddSwaggerGen(options =>
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
     options.OperationFilter<EjemplosDeErrorFilter>(); // NUEVO: ejemplos de error por código
 });
+
+// Llamadas a otros servicios: cada llamada saliente lleva el mismo Correlation ID del request
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<CorrelationIdHandler>();
+builder.Services.AddHttpClient<UsersClient>()
+    .AddHttpMessageHandler<CorrelationIdHandler>();
 
 // Health checks: el servicio informa si está vivo y listo
 builder.Services.AddHealthChecks()
