@@ -75,6 +75,7 @@ Dentro de cada API:
 ├── ExceptionHandlers/  # un IExceptionHandler por tipo de excepción
 ├── HealthChecks/       # chequeos de salud del servicio
 ├── Logging/            # middleware de Correlation ID
+├── Clients/            # clientes HTTP hacia otros servicios y propagación del Correlation ID
 ├── logs/               # archivos de log (se generan al ejecutar; no se suben al repo)
 └── Program.cs          # configuración (Serilog, Swagger, health checks, etc.)
 ```
@@ -290,6 +291,9 @@ Decisiones tomadas por el equipo donde el enunciado no define algo, o lo deja ab
 | 19/10/2026 | `POST /api/orders` no documenta un 409. | El enunciado lo lista, pero ningún `errorCode` del catálogo corresponde a ese caso. |
 | 19/10/2026 | En Cart, cualquier 400 automático (datos mal formados) usa **CRT-004**. | Es el único código 400 del catálogo de Cart. |
 | 19/10/2026 | Mientras no haya lógica real, los endpoints **tiran errores con datos de prueba** (ver tabla "Cómo probar los errores"). | Poder probar y mostrar en Swagger cada código de error antes de tener persistencia. |
+| 20/10/2026 | `/health/ready` chequea los servicios de los que depende y devuelve `Degraded` (HTTP 200) si no responden. `/health/live` no depende de nadie. | Distinguir "el proceso está vivo" de "puede trabajar con normalidad". |
+| 20/10/2026 | Las llamadas entre servicios usan clientes HTTP tipados (`IHttpClientFactory`) y un `CorrelationIdHandler` que propaga el Correlation ID. | El enunciado pide propagarlo en las llamadas HTTP salientes. |
+| 20/10/2026 | Los errores de negocio se registran como Warning y los inesperados como Error, siempre con su `ErrorCode`. | Lo pide el enunciado (5.3). |
 
 ### Consultas pendientes con la cátedra
 - ¿Dónde está la **librería de persistencia**? ¿Es la de SQLite + Dapper del repo de ejemplo o un paquete aparte?
