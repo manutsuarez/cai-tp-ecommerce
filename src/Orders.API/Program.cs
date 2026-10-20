@@ -5,6 +5,7 @@ using Orders.API.ExceptionHandlers;
 using Orders.API.Exceptions;
 using Orders.API.HealthChecks;
 using Orders.API.Logging;
+using Orders.API.Swagger; // NUEVO
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
@@ -68,6 +69,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     string xmlFile = typeof(Program).Assembly.GetName().Name + ".xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
+    options.OperationFilter<EjemplosDeErrorFilter>(); // NUEVO: ejemplos de error por código
 });
 
 // Health checks: el servicio informa si está vivo y listo
