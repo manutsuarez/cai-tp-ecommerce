@@ -253,11 +253,66 @@ Decisiones tomadas por el equipo donde el enunciado no define algo, o lo deja ab
 | 11/10/2026 | Swagger con **Swashbuckle.AspNetCore 10.3.0**, habilitado en el entorno Development. Se usa una lambda solo para configurarlo. | Es la librería que pide el enunciado; la lambda es la forma estándar de configurarla. |
 | 11/10/2026 | `POST /api/users/login` con datos inválidos (400) → **USR-002**. | El enunciado lista el 400 pero no le asigna un código. Se reutiliza el de "datos inválidos" del mismo servicio. |
 | 11/10/2026 | `DELETE /api/cart/{userId}/items/{productId}` cuando falla (404) → **CRT-001**. | El enunciado no asigna un código para quitar un producto que no está en el carrito. |
-| 15/10/2026 | `PUT /api/orders/{id}/status` con datos inválidos (400) → **ORD-002**. El 409 de `POST /api/orders` queda documentado sin `errorCode`. | El enunciado lista esos códigos HTTP pero no les asigna un `errorCode`. |
+| 15/10/2026 | `PUT /api/orders/{id}/status` con datos inválidos (400) → **ORD-002**. | El enunciado lista ese código HTTP pero no le asigna un `errorCode`. |
+| 19/10/2026 | `POST /api/orders` no documenta un 409. | El enunciado lo lista, pero ningún `errorCode` del catálogo corresponde a ese caso. |
+| 19/10/2026 | En Cart, cualquier 400 automático (datos mal formados) usa **CRT-004**. | Es el único código 400 del catálogo de Cart. |
+| 19/10/2026 | Mientras no haya lógica real, los endpoints **tiran errores con datos de prueba** (ver tabla "Cómo probar los errores"). | Poder probar y mostrar en Swagger cada código de error antes de tener persistencia. |
 
 ### Consultas pendientes con la cátedra
 - ¿Dónde está la **librería de persistencia**? ¿Es la de SQLite + Dapper del repo de ejemplo o un paquete aparte?
 - ¿Se acepta la solución en formato **`.slnx`**, o hace falta `.sln` (y llamarla `ECommerce`)?
 - ¿Las restricciones de la guía de ejercicios (sin LINQ, lambdas, `Dictionary`) aplican al TP?
 
-<!-- PENDIENTE: agregar la sección "Capturas de Swagger" con ejemplos de respuestas de error (errorCode / errorMessage) cuando esté implementado el manejo de errores. -->
+---
+
+## Cómo probar los errores
+
+Mientras no haya lógica real, cada servicio responde con datos fijos y **tira errores cuando recibe ciertos datos de prueba**. Así se puede ver cada código de error desde Swagger.
+
+| Servicio | Pedido | Dato de prueba | Respuesta |
+|---|---|---|---|
+| Products | `GET`, `PUT` o `DELETE /api/products/{id}` | `id` = `00000000-0000-0000-0000-000000000000` | 404 · PRD-001 |
+| Products | `POST /api/products` | `nombre` = `Producto Duplicado` | 409 · PRD-003 |
+| Products | `DELETE /api/products/{id}` | `id` = `11111111-1111-1111-1111-111111111111` | 409 · PRD-004 |
+| Products | `POST` o `PUT` | precio 0, nombre vacío, etc. | 400 · PRD-002 |
+| Users | `POST /api/users/register` | `email` = `existe@email.com` | 409 · USR-001 |
+| Users | `POST /api/users/login` | `password` = `incorrecta` | 401 · USR-003 |
+| Users | `POST /api/users/login` | `email` = `bloqueado@email.com` | 403 · USR-004 |
+| Users | `POST /api/users/login` | `email` = `fraude@email.com` | 403 · USR-005 |
+| Users | `register` o `login` | email mal formado o campos vacíos | 400 · USR-002 |
+| Orders | `GET` o `PUT /api/orders/{id}...` | `id` = todo ceros | 404 · ORD-001 |
+| Orders | `POST /api/orders` | `items` vacío | 400 · ORD-002 |
+| Orders | `POST /api/orders` | `usuarioId` = todo ceros | 404 · ORD-003 |
+| Orders | `POST /api/orders` | algún `productoId` = todo ceros | 404 · ORD-004 |
+| Orders | `POST /api/orders` | alguna `cantidad` mayor a 10 | 422 · ORD-005 |
+| Orders | `PUT /api/orders/{id}/status` | `estado` = `Pendiente` | 409 · ORD-006 |
+| Cart | `GET`, `PUT` o `DELETE /api/cart/{userId}...` | `userId` = todo ceros | 404 · CRT-001 |
+| Cart | `POST` o `PUT .../items` | `productoId` = todo ceros | 404 · CRT-002 |
+| Cart | `POST` o `PUT .../items` | `cantidad` mayor a 10 | 422 · CRT-003 |
+| Cart | `POST` o `PUT .../items` | `cantidad` 0 o negativa | 400 · CRT-004 |
+| Notifications | `POST /api/notifications/send` | `usuarioId` = todo ceros | 404 · NTF-001 |
+| Notifications | `POST /api/notifications/send` | `tipo` distinto de Email, Push o SMS | 400 · NTF-002 |
+| Notifications | `GET /api/notifications/{userId}` | `userId` = todo ceros | 404 · NTF-003 |
+
+Para ver el 500, la forma más directa es provocar una excepción no controlada: el `GlobalExceptionHandler` la convierte en PRD-005, USR-006, ORD-007, CRT-005 o NTF-004 según el servicio.
+
+---
+
+## Capturas de Swagger
+
+Ejemplos de respuestas de error en Swagger UI, con `errorCode`, `errorMessage` y `correlationId`.
+
+### Products · 404 PRD-001
+![Products - PRD-001](docs/capturas/products-prd-001.png)
+
+### Users · 403 USR-004
+![Users - USR-004](docs/capturas/users-usr-004.png)
+
+### Orders · 409 ORD-006
+![Orders - ORD-006](docs/capturas/orders-ord-006.png)
+
+### Cart · 422 CRT-003
+![Cart - CRT-003](docs/capturas/cart-crt-003.png)
+
+### Notifications · 404 NTF-001
+![Notifications - NTF-001](docs/capturas/notifications-ntf-001.png)
