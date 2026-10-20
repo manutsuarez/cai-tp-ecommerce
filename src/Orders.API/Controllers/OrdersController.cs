@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Orders.API.DTOs;
+using Orders.API.Exceptions;
 using Orders.API.Models;
 
 namespace Orders.API.Controllers;
@@ -7,11 +8,19 @@ namespace Orders.API.Controllers;
 /// <summary>
 /// Creación y seguimiento de órdenes de compra.
 /// </summary>
+/// <remarks>
+/// Datos para probar errores (respuestas de prueba): id todo ceros → ORD-001;
+/// usuarioId todo ceros → ORD-003; productoId todo ceros → ORD-004;
+/// cantidad mayor a 10 → ORD-005; items vacío → ORD-002;
+/// actualizar el estado a "Pendiente" → ORD-006.
+/// </remarks>
 [ApiController]
 [Route("api/orders")]
 [Produces("application/json")]
 public class OrdersController : ControllerBase
 {
+    private const int StockSimulado = 10;
+
     /// <summary>
     /// Lista las órdenes. Se puede filtrar por usuario.
     /// </summary>
@@ -20,7 +29,7 @@ public class OrdersController : ControllerBase
     /// <response code="500">ORD-007: Error interno al procesar la orden.</response>
     [HttpGet]
     [ProducesResponseType(typeof(List<Order>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult ObtenerOrdenes([FromQuery] Guid? usuarioId)
     {
         List<Order> ordenes = new List<Order>();
@@ -37,10 +46,11 @@ public class OrdersController : ControllerBase
     /// <response code="500">ORD-007: Error interno al procesar la orden.</response>
     [HttpGet("{id}")]
     [ProducesResponseType(typeof(Order), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult ObtenerOrden(Guid id)
     {
+        ValidarOrdenExiste(id);
         return Ok(CrearOrdenDeEjemplo());
     }
 
@@ -55,18 +65,25 @@ public class OrdersController : ControllerBase
     /// <response code="201">Orden creada en estado Pendiente.</response>
     /// <response code="400">ORD-002: Los datos de la orden son inválidos.</response>
     /// <response code="404">ORD-003: Usuario no encontrado al crear la orden. / ORD-004: Producto no encontrado al crear la orden.</response>
-    /// <response code="409">Conflicto al crear la orden (el enunciado no le asigna errorCode).</response>
     /// <response code="422">ORD-005: Stock insuficiente para uno o más productos.</response>
     /// <response code="500">ORD-007: Error interno al procesar la orden.</response>
     [HttpPost]
     [ProducesResponseType(typeof(Order), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status422UnprocessableEntity)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status422UnprocessableEntity)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult CrearOrden([FromBody] CreateOrderRequest request)
     {
+        ValidarItemsNoVacios(request);
+        ValidarUsuarioExiste(request.UsuarioId);
+
+        foreach (OrderItemRequest item in request.Items)
+        {
+            ValidarProductoExiste(item.ProductoId);
+            ValidarStock(item.Cantidad);
+        }
+
         Order orden = CrearOrdenDeEjemplo();
         return Created("/api/orders/" + orden.Id, orden);
     }
@@ -86,12 +103,15 @@ public class OrdersController : ControllerBase
     /// <response code="500">ORD-007: Error interno al procesar la orden.</response>
     [HttpPut("{id}/status")]
     [ProducesResponseType(typeof(OrderStatusResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status409Conflict)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult ActualizarEstado(Guid id, [FromBody] UpdateOrderStatusRequest request)
     {
+        ValidarOrdenExiste(id);
+        ValidarEstadoModificable(request.Estado);
+
         OrderStatusResponse respuesta = new OrderStatusResponse
         {
             Id = id,
@@ -101,8 +121,58 @@ public class OrdersController : ControllerBase
         return Ok(respuesta);
     }
 
-    // Arma una orden fija para devolver en los endpoints de prueba
-    // (valores copiados del ejemplo de la sección 4.3 del enunciado)
+    // --- Validaciones de prueba (se reemplazan cuando haya lógica real) ---
+
+    private static void ValidarOrdenExiste(Guid id)
+    {
+        if (id == Guid.Empty)
+        {
+            throw new NotFoundException(ErrorCodes.ORD_001, "Orden no encontrada.");
+        }
+    }
+
+    private static void ValidarItemsNoVacios(CreateOrderRequest request)
+    {
+        if (request.Items == null || request.Items.Count == 0)
+        {
+            throw new ValidationException(ErrorCodes.ORD_002, "La orden debe tener al menos un producto.");
+        }
+    }
+
+    private static void ValidarUsuarioExiste(Guid usuarioId)
+    {
+        if (usuarioId == Guid.Empty)
+        {
+            throw new NotFoundException(ErrorCodes.ORD_003, "Usuario no encontrado.");
+        }
+    }
+
+    private static void ValidarProductoExiste(Guid productoId)
+    {
+        if (productoId == Guid.Empty)
+        {
+            throw new NotFoundException(ErrorCodes.ORD_004, "Producto no encontrado.");
+        }
+    }
+
+    private static void ValidarStock(int cantidad)
+    {
+        if (cantidad > StockSimulado)
+        {
+            throw new BusinessRuleException(ErrorCodes.ORD_005,
+                "Stock insuficiente. Disponible: " + StockSimulado + ", solicitado: " + cantidad + ".");
+        }
+    }
+
+    private static void ValidarEstadoModificable(string estado)
+    {
+        if (estado == "Pendiente")
+        {
+            throw new BusinessRuleException(ErrorCodes.ORD_006,
+                "La orden no puede volver al estado 'Pendiente'.");
+        }
+    }
+
     private static Order CrearOrdenDeEjemplo()
     {
         OrderItem item = new OrderItem
