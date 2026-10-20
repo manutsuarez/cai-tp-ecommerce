@@ -205,7 +205,7 @@ Para probarlo, los archivos `.http` de los 5 servicios tienen un pedido a `/heal
 
 ## Formato de las respuestas de error
 
-Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, con dos campos propios obligatorios: `errorCode` y `errorMessage`.
+Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, con dos campos propios obligatorios: `errorCode` y `errorMessage`. Además incluyen `correlationId`, para poder buscar la request en los logs.
 
 ```json
 {
@@ -215,10 +215,10 @@ Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, c
   "detail": "El recurso solicitado no fue encontrado.",
   "instance": "/api/products/99",
   "errorCode": "PRD-001",
-  "errorMessage": "Producto no encontrado."
+  "errorMessage": "Producto no encontrado.",
+  "correlationId": "2e550b6c-bc51-445e-9b95-88c4b964ba08"
 }
 ```
-
 ---
 
 ## Códigos de error
