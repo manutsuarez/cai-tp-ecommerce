@@ -18,3 +18,7 @@ Accept: application/json
 GET https://localhost:7223/health
 Accept: application/json
 X-Correlation-Id: mi-id-de-prueba-123
+
+### Error 500 NTF-004: falla interna simulada
+GET {{Notifications.API_HostAddress}}/api/notifications/ffffffff-ffff-ffff-ffff-ffffffffffff
+Accept: application/json
