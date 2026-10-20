@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
+using Serilog;
 using Cart.API.DTOs;
 using Cart.API.Exceptions;
 
@@ -16,6 +17,8 @@ public class GlobalExceptionHandler(IHostEnvironment environment) : IExceptionHa
         {
             detalle = exception.Message;
         }
+
+        Log.Error(exception, "Error inesperado. ErrorCode {ErrorCode}", ErrorCodes.CRT_005);
 
         ErrorResponse respuesta = new ErrorResponse
         {
