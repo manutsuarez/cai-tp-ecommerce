@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Notifications.API.DTOs;
+using Notifications.API.Exceptions;
 using Notifications.API.Models;
 
 namespace Notifications.API.Controllers;
@@ -7,6 +8,10 @@ namespace Notifications.API.Controllers;
 /// <summary>
 /// Registro y envío simulado de notificaciones a los usuarios.
 /// </summary>
+/// <remarks>
+/// Datos para probar errores (respuestas de prueba): enviar con usuarioId todo ceros → NTF-001;
+/// listar con userId todo ceros → NTF-003; tipo distinto de Email, Push o SMS → NTF-002.
+/// </remarks>
 [ApiController]
 [Route("api/notifications")]
 [Produces("application/json")]
@@ -22,11 +27,13 @@ public class NotificationsController : ControllerBase
     /// <response code="500">NTF-004: Error interno al procesar la notificación.</response>
     [HttpPost("send")]
     [ProducesResponseType(typeof(Notification), StatusCodes.Status201Created)]
-    [ProducesResponseType(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult Enviar(EnviarNotificacionRequest pedido)
     {
+        ValidarUsuarioExiste(pedido.UsuarioId);
+
         Notification notificacion = new Notification();
         notificacion.Id = Guid.Parse("11112222-3333-4444-5555-666677778888");
         notificacion.UsuarioId = pedido.UsuarioId;
@@ -47,10 +54,12 @@ public class NotificationsController : ControllerBase
     /// <response code="500">NTF-004: Error interno al procesar la notificación.</response>
     [HttpGet("{userId}")]
     [ProducesResponseType(typeof(List<Notification>), StatusCodes.Status200OK)]
-    [ProducesResponseType(StatusCodes.Status404NotFound)]
-    [ProducesResponseType(StatusCodes.Status500InternalServerError)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult ListarPorUsuario(Guid userId)
     {
+        ValidarTieneNotificaciones(userId);
+
         Notification notificacion = new Notification();
         notificacion.Id = Guid.Parse("11112222-3333-4444-5555-666677778888");
         notificacion.UsuarioId = userId;
@@ -62,5 +71,23 @@ public class NotificationsController : ControllerBase
         List<Notification> lista = new List<Notification>();
         lista.Add(notificacion);
         return Ok(lista);
+    }
+
+    // --- Validaciones de prueba (se reemplazan cuando haya lógica real) ---
+
+    private static void ValidarUsuarioExiste(Guid usuarioId)
+    {
+        if (usuarioId == Guid.Empty)
+        {
+            throw new NotFoundException(ErrorCodes.NTF_001, "El usuario destinatario no fue encontrado.");
+        }
+    }
+
+    private static void ValidarTieneNotificaciones(Guid userId)
+    {
+        if (userId == Guid.Empty)
+        {
+            throw new NotFoundException(ErrorCodes.NTF_003, "No se encontraron notificaciones para el usuario.");
+        }
     }
 }
