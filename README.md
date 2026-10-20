@@ -185,13 +185,21 @@ Los logs se generan con **Serilog** en dos lugares:
 
 Cada log incluye fecha y hora, nivel, servicio, endpoint y Correlation ID. Se registra el inicio y el fin de cada request, con su duración.
 
+**Errores:** cuando el log corresponde a un error, incluye también el `ErrorCode` del catálogo. Los errores de negocio y de validación (400, 401, 403, 404, 409, 422) se registran con nivel **Warning**, y los errores inesperados (500) con nivel **Error**, junto con el detalle técnico de la excepción. Ejemplo de una línea del archivo JSON:
+
+```json
+{"Timestamp":"2026-10-20T16:26:46.1544605-03:00","Level":"Warning","RenderedMessage":"Recurso no encontrado. ErrorCode \"PRD-001\": \"Producto no encontrado.\"","Properties":{"ErrorCode":"PRD-001","Endpoint":"GET /api/products/00000000-0000-0000-0000-000000000000","CorrelationId":"f8409c31-2873-4be5-b361-0adfb9c9a693","Servicio":"Products.API"}}
+```
+
 **Correlation ID:** cada request tiene un identificador único que permite seguirla en los logs.
 
 - Si el pedido trae el header **`X-Correlation-Id`**, se usa ese valor. Si no, el servicio genera uno nuevo.
 - El servicio lo devuelve en el header **`X-Correlation-Id`** de la respuesta (se puede ver en Swagger, en *Response headers*).
 - Todos los logs de esa request llevan el mismo Correlation ID.
+- Las respuestas de error también lo incluyen, en el campo `correlationId`.
+- Cuando un servicio llama a otro, **propaga el mismo Correlation ID** en el header de la llamada saliente (un `CorrelationIdHandler` lo agrega a cada llamada del `HttpClient`). Así una misma operación se puede seguir en los logs de varios servicios.
 
-Para probarlo, los archivos `.http` de Users, Cart, Orders y Notifications tienen un pedido a `/health` que manda un Correlation ID propio. También se puede ver en Swagger, en los *Response headers* de cualquier respuesta.
+Para probarlo, los archivos `.http` de los 5 servicios tienen un pedido a `/health` que manda un Correlation ID propio. Para ver la propagación entre servicios, levantar dos a la vez (por ejemplo Notifications y Users), mandar `GET /health/ready` a Notifications con un `X-Correlation-Id` propio y buscar ese mismo ID en el log de Users (`Inicio de request GET /health/live`). También se ve en Swagger, en los *Response headers* de cualquier respuesta.
 
 ---
 
