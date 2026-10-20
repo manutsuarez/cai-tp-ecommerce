@@ -11,7 +11,8 @@ namespace Products.API.Controllers;
 /// <remarks>
 /// Datos para probar errores (respuestas de prueba): id todo ceros → PRD-001;
 /// crear un producto llamado "Producto Duplicado" → PRD-003;
-/// eliminar el id 11111111-1111-1111-1111-111111111111 → PRD-004; datos inválidos → PRD-002.
+/// eliminar el id 11111111-1111-1111-1111-111111111111 → PRD-004; datos inválidos → PRD-002;
+/// obtener el id ffffffff-ffff-ffff-ffff-ffffffffffff → PRD-005 (falla simulada).
 /// </remarks>
 [ApiController]
 [Route("api/products")]
@@ -48,6 +49,7 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult ObtenerPorId(Guid id)
     {
+        SimularErrorInterno(id);
         ValidarProductoExiste(id);
 
         Product producto = CrearProductoEjemplo();
@@ -173,6 +175,15 @@ public class ProductsController : ControllerBase
         {
             throw new BusinessRuleException(ErrorCodes.PRD_004,
                 "El producto tiene órdenes activas y no puede eliminarse.");
+        }
+    }
+
+
+    private static void SimularErrorInterno(Guid id)
+    {
+        if (id == Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"))
+        {
+            throw new Exception("Falla simulada para probar el error 500.");
         }
     }
 }
