@@ -5,6 +5,7 @@ using Notifications.API.ExceptionHandlers;
 using Notifications.API.Exceptions;
 using Notifications.API.HealthChecks;
 using Notifications.API.Logging;
+using Notifications.API.Swagger; // NUEVO
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
@@ -40,7 +41,7 @@ builder.Services.AddControllers()
                 }
             }
 
-                        Log.Warning("Datos inválidos. ErrorCode {ErrorCode}: {ErrorMessage}", ErrorCodes.NTF_002, string.Join("; ", mensajes));
+            Log.Warning("Datos inválidos. ErrorCode {ErrorCode}: {ErrorMessage}", ErrorCodes.NTF_002, string.Join("; ", mensajes));
 
             ErrorResponse respuesta = new ErrorResponse
             {
@@ -68,6 +69,7 @@ builder.Services.AddSwaggerGen(options =>
 {
     string xmlFile = typeof(Program).Assembly.GetName().Name + ".xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
+    options.OperationFilter<EjemplosDeErrorFilter>(); // NUEVO: ejemplos de error por código
 });
 
 // Health checks: el servicio informa si está vivo y listo
