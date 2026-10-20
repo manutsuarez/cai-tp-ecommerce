@@ -40,6 +40,8 @@ builder.Services.AddControllers()
                 }
             }
 
+                        Log.Warning("Datos inválidos. ErrorCode {ErrorCode}: {ErrorMessage}", ErrorCodes.NTF_002, string.Join("; ", mensajes));
+
             ErrorResponse respuesta = new ErrorResponse
             {
                 Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",

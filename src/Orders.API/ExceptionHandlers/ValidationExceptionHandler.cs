@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
+using Serilog;
 using Orders.API.DTOs;
 using Orders.API.Exceptions;
 
@@ -15,6 +16,8 @@ public class ValidationExceptionHandler : IExceptionHandler
         {
             return false;
         }
+
+        Log.Warning("Datos inválidos. ErrorCode {ErrorCode}: {ErrorMessage}", ex.ErrorCode, ex.Message);
 
         ErrorResponse respuesta = new ErrorResponse
         {

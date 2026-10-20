@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
+using Serilog;
 using Products.API.DTOs;
 using Products.API.Exceptions;
 
@@ -11,6 +12,8 @@ public class GlobalExceptionHandler(IHostEnvironment environment) : IExceptionHa
         Exception exception,
         CancellationToken cancellationToken)
     {
+        Log.Error(exception, "Error inesperado. ErrorCode {ErrorCode}", ErrorCodes.PRD_005);
+
         string detalle = "Ocurrió un error inesperado.";
         if (environment.IsDevelopment())
         {
