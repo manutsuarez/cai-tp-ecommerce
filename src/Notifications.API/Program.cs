@@ -81,7 +81,8 @@ builder.Services.AddHttpClient<UsersClient>()
 
 // Health checks: el servicio informa si está vivo y listo
 builder.Services.AddHealthChecks()
-    .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" });
+    .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" })
+    .AddCheck<UsersHealthCheck>("users", tags: new[] { "ready" });
 
 builder.Services.AddExceptionHandler<NotFoundExceptionHandler>();
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
