@@ -45,7 +45,7 @@ GET {{Products.API_HostAddress}}/health
 Accept: application/json
 X-Correlation-Id: mi-id-de-prueba-123
 
-  ### Error 404 PRD-001: producto no encontrado
+### Error 404 PRD-001: producto no encontrado
 GET {{Products.API_HostAddress}}/api/products/00000000-0000-0000-0000-000000000000
 Accept: application/json
 
@@ -72,3 +72,7 @@ Content-Type: application/json
   "stock": 5,
   "categoria": "Otros"
 }
+
+### Error 500 PRD-005: falla interna simulada
+GET {{Products.API_HostAddress}}/api/products/ffffffff-ffff-ffff-ffff-ffffffffffff
+Accept: application/json

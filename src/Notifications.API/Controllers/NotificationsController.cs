@@ -10,7 +10,8 @@ namespace Notifications.API.Controllers;
 /// </summary>
 /// <remarks>
 /// Datos para probar errores (respuestas de prueba): enviar con usuarioId todo ceros → NTF-001;
-/// listar con userId todo ceros → NTF-003; tipo distinto de Email, Push o SMS → NTF-002.
+/// listar con userId todo ceros → NTF-003; tipo distinto de Email, Push o SMS → NTF-002;
+/// listar con userId ffffffff-ffff-ffff-ffff-ffffffffffff → NTF-004 (falla simulada).
 /// </remarks>
 [ApiController]
 [Route("api/notifications")]
@@ -58,6 +59,7 @@ public class NotificationsController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult ListarPorUsuario(Guid userId)
     {
+        SimularErrorInterno(userId);
         ValidarTieneNotificaciones(userId);
 
         Notification notificacion = new Notification();
@@ -90,4 +92,13 @@ public class NotificationsController : ControllerBase
             throw new NotFoundException(ErrorCodes.NTF_003, "No se encontraron notificaciones para el usuario.");
         }
     }
+
+    private static void SimularErrorInterno(Guid id)
+    {
+        if (id == Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"))
+        {
+            throw new Exception("Falla simulada para probar el error 500.");
+        }
+    }
+
 }

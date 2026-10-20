@@ -275,6 +275,7 @@ Mientras no haya lógica real, cada servicio responde con datos fijos y **tira e
 | Products | `POST /api/products` | `nombre` = `Producto Duplicado` | 409 · PRD-003 |
 | Products | `DELETE /api/products/{id}` | `id` = `11111111-1111-1111-1111-111111111111` | 409 · PRD-004 |
 | Products | `POST` o `PUT` | precio 0, nombre vacío, etc. | 400 · PRD-002 |
+| Products | `GET /api/products/{id}` | `id` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · PRD-005 (falla simulada) |
 | Users | `POST /api/users/register` | `email` = `existe@email.com` | 409 · USR-001 |
 | Users | `POST /api/users/login` | `password` = `incorrecta` | 401 · USR-003 |
 | Users | `POST /api/users/login` | `email` = `bloqueado@email.com` | 403 · USR-004 |
@@ -293,8 +294,9 @@ Mientras no haya lógica real, cada servicio responde con datos fijos y **tira e
 | Notifications | `POST /api/notifications/send` | `usuarioId` = todo ceros | 404 · NTF-001 |
 | Notifications | `POST /api/notifications/send` | `tipo` distinto de Email, Push o SMS | 400 · NTF-002 |
 | Notifications | `GET /api/notifications/{userId}` | `userId` = todo ceros | 404 · NTF-003 |
+| Notifications | `GET /api/notifications/{userId}` | `userId` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · NTF-004 (falla simulada) |
 
-Para ver el 500, la forma más directa es provocar una excepción no controlada: el `GlobalExceptionHandler` la convierte en PRD-005, USR-006, ORD-007, CRT-005 o NTF-004 según el servicio.
+Para ver el 500, Products y Notifications tienen un dato de prueba (`ffffffff-ffff-ffff-ffff-ffffffffffff`) que lanza una falla simulada. El `GlobalExceptionHandler` la convierte en PRD-005 o NTF-004 y la registra en el log con nivel Error.
 
 ---
 
