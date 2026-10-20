@@ -131,9 +131,9 @@ Cada servicio expone tres endpoints de salud. Responden en JSON con el estado `H
 
 | Endpoint | Para qué sirve |
 |---|---|
-| `GET /health` | Estado general del servicio (todos los chequeos). |
-| `GET /health/ready` | ¿Está **listo** para recibir pedidos? |
-| `GET /health/live` | ¿Está **vivo** (el proceso responde)? |
+| `GET /health` | Estado general del servicio (todos los chequeos, incluidos los de dependencias). |
+| `GET /health/ready` | ¿Está **listo**? Chequea el propio servicio y los servicios de los que depende. |
+| `GET /health/live` | ¿Está **vivo**? Solo verifica que el proceso responda; no mira a otros servicios. |
 
 Ejemplo de respuesta (`https://localhost:7172/health`):
 
@@ -142,7 +142,32 @@ Ejemplo de respuesta (`https://localhost:7172/health`):
   "status": "Healthy",
   "servicio": "Products.API",
   "checks": {
-    "api": "Healthy"
+    "api": "Healthy",
+    "orders": "Healthy"
+  }
+}
+```
+
+### Dependencias en `/health/ready`
+
+`/health/ready` no solo mira al propio servicio: también pregunta (con `GET /health/live`) a los servicios de los que depende. Si alguno no responde, el estado pasa a **Degraded** (el servicio sigue vivo, pero con funciones limitadas). El código HTTP es 200 para `Healthy` y `Degraded`, y 503 para `Unhealthy`.
+
+| Servicio | Depende de | Si no responde |
+|---|---|---|
+| Products.API | Orders.API | `Degraded` |
+| Notifications.API | Users.API | `Degraded` |
+
+Users.API no llama a otros servicios, por eso su `/health/ready` equivale a `/health/live`. Las URLs de los servicios destino se configuran en `appsettings.json` (sección `Servicios`).
+
+Ejemplo de `https://localhost:7172/health/ready` con Orders.API apagado:
+
+```json
+{
+  "status": "Degraded",
+  "servicio": "Products.API",
+  "checks": {
+    "api": "Healthy",
+    "orders": "Degraded"
   }
 }
 ```
