@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
 using Orders.API.DTOs;
 using Orders.API.Exceptions;
+using Serilog;
 
 namespace Orders.API.ExceptionHandlers;
 
@@ -11,6 +12,9 @@ public class GlobalExceptionHandler(IHostEnvironment environment) : IExceptionHa
         Exception exception,
         CancellationToken cancellationToken)
     {
+
+        Log.Error(exception, "Error inesperado. ErrorCode {ErrorCode}", ErrorCodes.ORD_007);
+
         string detalle = "Ocurrió un error inesperado.";
         if (environment.IsDevelopment())
         {

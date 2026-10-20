@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
 using Orders.API.DTOs;
 using Orders.API.Exceptions;
+using Serilog;
 
 namespace Orders.API.ExceptionHandlers;
 
@@ -15,6 +16,8 @@ public class BusinessRuleExceptionHandler : IExceptionHandler
         {
             return false;
         }
+
+        Log.Warning("Regla de negocio violada. ErrorCode {ErrorCode}: {ErrorMessage}", ex.ErrorCode, ex.Message);
 
         ErrorResponse respuesta;
 

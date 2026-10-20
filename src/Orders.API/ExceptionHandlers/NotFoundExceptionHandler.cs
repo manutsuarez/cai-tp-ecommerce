@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Diagnostics;
+using Serilog;
 using Orders.API.DTOs;
 using Orders.API.Exceptions;
 
@@ -15,6 +16,8 @@ public class NotFoundExceptionHandler : IExceptionHandler
         {
             return false;
         }
+
+        Log.Warning("Recurso no encontrado. ErrorCode {ErrorCode}: {ErrorMessage}", ex.ErrorCode, ex.Message);
 
         ErrorResponse respuesta = new ErrorResponse
         {
