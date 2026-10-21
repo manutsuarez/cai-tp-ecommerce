@@ -76,3 +76,8 @@ Content-Type: application/json
 ### Error 500 PRD-005: falla interna simulada
 GET {{Products.API_HostAddress}}/api/products/ffffffff-ffff-ffff-ffff-ffffffffffff
 Accept: application/json
+
+### Health ready (chequea Orders) con un Correlation ID propio
+GET {{Products.API_HostAddress}}/health/ready
+Accept: application/json
+X-Correlation-Id: prueba-propagacion-002
