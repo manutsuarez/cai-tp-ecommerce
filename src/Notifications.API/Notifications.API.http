@@ -22,3 +22,8 @@ X-Correlation-Id: mi-id-de-prueba-123
 ### Error 500 NTF-004: falla interna simulada
 GET {{Notifications.API_HostAddress}}/api/notifications/ffffffff-ffff-ffff-ffff-ffffffffffff
 Accept: application/json
+
+### Health ready (chequea Users) con un Correlation ID propio
+GET {{Notifications.API_HostAddress}}/health/ready
+Accept: application/json
+X-Correlation-Id: prueba-propagacion-001
