@@ -75,6 +75,7 @@ Dentro de cada API:
 ├── ExceptionHandlers/  # un IExceptionHandler por tipo de excepción
 ├── HealthChecks/       # chequeos de salud del servicio
 ├── Logging/            # middleware de Correlation ID
+├── Clients/            # clientes HTTP hacia otros servicios y propagación del Correlation ID
 ├── logs/               # archivos de log (se generan al ejecutar; no se suben al repo)
 └── Program.cs          # configuración (Serilog, Swagger, health checks, etc.)
 ```
@@ -131,9 +132,9 @@ Cada servicio expone tres endpoints de salud. Responden en JSON con el estado `H
 
 | Endpoint | Para qué sirve |
 |---|---|
-| `GET /health` | Estado general del servicio (todos los chequeos). |
-| `GET /health/ready` | ¿Está **listo** para recibir pedidos? |
-| `GET /health/live` | ¿Está **vivo** (el proceso responde)? |
+| `GET /health` | Estado general del servicio (todos los chequeos, incluidos los de dependencias). |
+| `GET /health/ready` | ¿Está **listo**? Chequea el propio servicio y los servicios de los que depende. |
+| `GET /health/live` | ¿Está **vivo**? Solo verifica que el proceso responda; no mira a otros servicios. |
 
 Ejemplo de respuesta (`https://localhost:7172/health`):
 
@@ -142,7 +143,32 @@ Ejemplo de respuesta (`https://localhost:7172/health`):
   "status": "Healthy",
   "servicio": "Products.API",
   "checks": {
-    "api": "Healthy"
+    "api": "Healthy",
+    "orders": "Healthy"
+  }
+}
+```
+
+### Dependencias en `/health/ready`
+
+`/health/ready` no solo mira al propio servicio: también pregunta (con `GET /health/live`) a los servicios de los que depende. Si alguno no responde, el estado pasa a **Degraded** (el servicio sigue vivo, pero con funciones limitadas). El código HTTP es 200 para `Healthy` y `Degraded`, y 503 para `Unhealthy`.
+
+| Servicio | Depende de | Si no responde |
+|---|---|---|
+| Products.API | Orders.API | `Degraded` |
+| Notifications.API | Users.API | `Degraded` |
+
+Users.API no llama a otros servicios, por eso su `/health/ready` equivale a `/health/live`. Las URLs de los servicios destino se configuran en `appsettings.json` (sección `Servicios`).
+
+Ejemplo de `https://localhost:7172/health/ready` con Orders.API apagado:
+
+```json
+{
+  "status": "Degraded",
+  "servicio": "Products.API",
+  "checks": {
+    "api": "Healthy",
+    "orders": "Degraded"
   }
 }
 ```
@@ -160,19 +186,27 @@ Los logs se generan con **Serilog** en dos lugares:
 
 Cada log incluye fecha y hora, nivel, servicio, endpoint y Correlation ID. Se registra el inicio y el fin de cada request, con su duración.
 
+**Errores:** cuando el log corresponde a un error, incluye también el `ErrorCode` del catálogo. Los errores de negocio y de validación (400, 401, 403, 404, 409, 422) se registran con nivel **Warning**, y los errores inesperados (500) con nivel **Error**, junto con el detalle técnico de la excepción. Ejemplo de una línea del archivo JSON:
+
+```json
+{"Timestamp":"2026-10-20T16:26:46.1544605-03:00","Level":"Warning","RenderedMessage":"Recurso no encontrado. ErrorCode \"PRD-001\": \"Producto no encontrado.\"","Properties":{"ErrorCode":"PRD-001","Endpoint":"GET /api/products/00000000-0000-0000-0000-000000000000","CorrelationId":"f8409c31-2873-4be5-b361-0adfb9c9a693","Servicio":"Products.API"}}
+```
+
 **Correlation ID:** cada request tiene un identificador único que permite seguirla en los logs.
 
 - Si el pedido trae el header **`X-Correlation-Id`**, se usa ese valor. Si no, el servicio genera uno nuevo.
 - El servicio lo devuelve en el header **`X-Correlation-Id`** de la respuesta (se puede ver en Swagger, en *Response headers*).
 - Todos los logs de esa request llevan el mismo Correlation ID.
+- Las respuestas de error también lo incluyen, en el campo `correlationId`.
+- Cuando un servicio llama a otro, **propaga el mismo Correlation ID** en el header de la llamada saliente (un `CorrelationIdHandler` lo agrega a cada llamada del `HttpClient`). Así una misma operación se puede seguir en los logs de varios servicios.
 
-Para probarlo, los archivos `.http` de Users, Cart, Orders y Notifications tienen un pedido a `/health` que manda un Correlation ID propio. También se puede ver en Swagger, en los *Response headers* de cualquier respuesta.
+Para probarlo, los archivos `.http` de los 5 servicios tienen un pedido a `/health` que manda un Correlation ID propio. Para ver la propagación entre servicios, levantar dos a la vez (por ejemplo Notifications y Users), mandar `GET /health/ready` a Notifications con un `X-Correlation-Id` propio y buscar ese mismo ID en el log de Users (`Inicio de request GET /health/live`). También se ve en Swagger, en los *Response headers* de cualquier respuesta.
 
 ---
 
 ## Formato de las respuestas de error
 
-Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, con dos campos propios obligatorios: `errorCode` y `errorMessage`.
+Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, con dos campos propios obligatorios: `errorCode` y `errorMessage`. Además incluyen `correlationId`, para poder buscar la request en los logs.
 
 ```json
 {
@@ -182,10 +216,10 @@ Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, c
   "detail": "El recurso solicitado no fue encontrado.",
   "instance": "/api/products/99",
   "errorCode": "PRD-001",
-  "errorMessage": "Producto no encontrado."
+  "errorMessage": "Producto no encontrado.",
+  "correlationId": "2e550b6c-bc51-445e-9b95-88c4b964ba08"
 }
 ```
-
 ---
 
 ## Códigos de error
@@ -257,6 +291,9 @@ Decisiones tomadas por el equipo donde el enunciado no define algo, o lo deja ab
 | 19/10/2026 | `POST /api/orders` no documenta un 409. | El enunciado lo lista, pero ningún `errorCode` del catálogo corresponde a ese caso. |
 | 19/10/2026 | En Cart, cualquier 400 automático (datos mal formados) usa **CRT-004**. | Es el único código 400 del catálogo de Cart. |
 | 19/10/2026 | Mientras no haya lógica real, los endpoints **tiran errores con datos de prueba** (ver tabla "Cómo probar los errores"). | Poder probar y mostrar en Swagger cada código de error antes de tener persistencia. |
+| 20/10/2026 | `/health/ready` chequea los servicios de los que depende y devuelve `Degraded` (HTTP 200) si no responden. `/health/live` no depende de nadie. | Distinguir "el proceso está vivo" de "puede trabajar con normalidad". |
+| 20/10/2026 | Las llamadas entre servicios usan clientes HTTP tipados (`IHttpClientFactory`) y un `CorrelationIdHandler` que propaga el Correlation ID. | El enunciado pide propagarlo en las llamadas HTTP salientes. |
+| 20/10/2026 | Los errores de negocio se registran como Warning y los inesperados como Error, siempre con su `ErrorCode`. | Lo pide el enunciado (5.3). |
 
 ### Consultas pendientes con la cátedra
 - ¿Dónde está la **librería de persistencia**? ¿Es la de SQLite + Dapper del repo de ejemplo o un paquete aparte?
