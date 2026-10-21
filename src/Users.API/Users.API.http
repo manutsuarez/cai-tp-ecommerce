@@ -26,3 +26,14 @@ Content-Type: application/json
 GET https://localhost:7198/health
 Accept: application/json
 X-Correlation-Id: mi-id-de-prueba-123
+
+### Error 500 USR-006: falla interna simulada
+POST {{Users.API_HostAddress}}/api/users/register
+Content-Type: application/json
+
+{
+  "nombre": "María",
+  "apellido": "González",
+  "email": "falla@email.com",
+  "password": "MiPassword123!"
+}

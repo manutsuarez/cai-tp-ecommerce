@@ -10,7 +10,8 @@ namespace Users.API.Controllers;
 /// <remarks>
 /// Datos para probar errores (respuestas de prueba): register con email existe@email.com → USR-001;
 /// login con password "incorrecta" → USR-003; login con bloqueado@email.com → USR-004;
-/// login con fraude@email.com → USR-005; email mal formado o campos vacíos → USR-002.
+/// login con fraude@email.com → USR-005; email mal formado o campos vacíos → USR-002;
+/// register con email falla@email.com → USR-006 (falla simulada).
 /// </remarks>
 [ApiController]
 [Route("api/users")]
@@ -32,6 +33,7 @@ public class UsersController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult Register(RegisterUserRequest request)
     {
+        SimularErrorInterno(request.Email);
         ValidarEmailNoRegistrado(request.Email);
 
         UserResponse response = new UserResponse
@@ -112,6 +114,14 @@ public class UsersController : ControllerBase
         if (password == "incorrecta")
         {
             throw new BusinessRuleException(ErrorCodes.USR_003, "Credenciales incorrectas.");
+        }
+    }
+
+    private static void SimularErrorInterno(string email)
+    {
+        if (email == "falla@email.com")
+        {
+            throw new Exception("Falla simulada para probar el error 500.");
         }
     }
 }
