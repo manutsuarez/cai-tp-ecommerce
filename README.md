@@ -318,6 +318,7 @@ Mientras no haya lógica real, cada servicio responde con datos fijos y **tira e
 | Users | `POST /api/users/login` | `email` = `bloqueado@email.com` | 403 · USR-004 |
 | Users | `POST /api/users/login` | `email` = `fraude@email.com` | 403 · USR-005 |
 | Users | `register` o `login` | email mal formado o campos vacíos | 400 · USR-002 |
+| Users | `POST /api/users/register` | `email` = `falla@email.com` | 500 · USR-006 (falla simulada) |
 | Orders | `GET` o `PUT /api/orders/{id}...` | `id` = todo ceros | 404 · ORD-001 |
 | Orders | `POST /api/orders` | `items` vacío | 400 · ORD-002 |
 | Orders | `POST /api/orders` | `usuarioId` = todo ceros | 404 · ORD-003 |
@@ -328,12 +329,13 @@ Mientras no haya lógica real, cada servicio responde con datos fijos y **tira e
 | Cart | `POST` o `PUT .../items` | `productoId` = todo ceros | 404 · CRT-002 |
 | Cart | `POST` o `PUT .../items` | `cantidad` mayor a 10 | 422 · CRT-003 |
 | Cart | `POST` o `PUT .../items` | `cantidad` 0 o negativa | 400 · CRT-004 |
+| Cart | `GET /api/cart/{userId}` | `userId` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · CRT-005 (falla simulada) |
 | Notifications | `POST /api/notifications/send` | `usuarioId` = todo ceros | 404 · NTF-001 |
 | Notifications | `POST /api/notifications/send` | `tipo` distinto de Email, Push o SMS | 400 · NTF-002 |
 | Notifications | `GET /api/notifications/{userId}` | `userId` = todo ceros | 404 · NTF-003 |
 | Notifications | `GET /api/notifications/{userId}` | `userId` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · NTF-004 (falla simulada) |
 
-Para ver el 500, Products y Notifications tienen un dato de prueba (`ffffffff-ffff-ffff-ffff-ffffffffffff`) que lanza una falla simulada. El `GlobalExceptionHandler` la convierte en PRD-005 o NTF-004 y la registra en el log con nivel Error.
+Para ver el 500, Products, Notifications, Users y Cart tienen un dato de prueba que lanza una falla simulada (ver las filas "falla simulada" de la tabla). El `GlobalExceptionHandler` la convierte en el código 500 de cada servicio (PRD-005, NTF-004, USR-006, CRT-005) y la registra en el log con nivel Error.
 
 ---
 
