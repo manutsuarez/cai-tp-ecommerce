@@ -9,7 +9,8 @@ namespace Cart.API.Controllers;
 /// </summary>
 /// <remarks>
 /// Datos para probar errores (respuestas de prueba): userId todo ceros → CRT-001;
-/// productoId todo ceros → CRT-002; cantidad mayor a 10 → CRT-003; cantidad 0 o negativa → CRT-004.
+/// productoId todo ceros → CRT-002; cantidad mayor a 10 → CRT-003; cantidad 0 o negativa → CRT-004;
+/// GET con userId ffffffff-ffff-ffff-ffff-ffffffffffff → CRT-005 (falla simulada).
 /// </remarks>
 [ApiController]
 [Route("api/cart")]
@@ -32,6 +33,7 @@ public class CartController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult GetCart(Guid userId)
     {
+        SimularErrorInterno(userId);
         ValidarCarritoExiste(userId);
 
         CartResponse response = new CartResponse
@@ -177,6 +179,14 @@ public class CartController : ControllerBase
         {
             throw new BusinessRuleException(ErrorCodes.CRT_003,
                 "Stock insuficiente. Disponible: " + StockSimulado + ", solicitado: " + cantidad + ".");
+        }
+    }
+
+    private static void SimularErrorInterno(Guid id)
+    {
+        if (id == Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"))
+        {
+            throw new Exception("Falla simulada para probar el error 500.");
         }
     }
 }

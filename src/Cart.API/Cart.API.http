@@ -66,3 +66,7 @@ Content-Type: application/json
   "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
   "cantidad": 0
 }
+
+  ### Error 500 CRT-005: falla interna simulada
+GET {{Cart.API_HostAddress}}/api/cart/ffffffff-ffff-ffff-ffff-ffffffffffff
+Accept: application/json
