@@ -1,9 +1,10 @@
+using Cart.API.Clients;
 using Cart.API.DTOs;
 using Cart.API.ExceptionHandlers;
 using Cart.API.Exceptions;
 using Cart.API.HealthChecks;
 using Cart.API.Logging;
-using Cart.API.Swagger; // NUEVO
+using Cart.API.Swagger;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Serilog;
@@ -70,12 +71,19 @@ builder.Services.AddSwaggerGen(options =>
 {
     string xmlFile = typeof(Program).Assembly.GetName().Name + ".xml";
     options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
-    options.OperationFilter<EjemplosDeErrorFilter>(); // NUEVO: ejemplos de error por código
+    options.OperationFilter<EjemplosDeErrorFilter>();
 });
+
+// Llamadas a otros servicios: cada llamada saliente lleva el mismo Correlation ID del request
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<CorrelationIdHandler>();
+builder.Services.AddHttpClient<ProductsClient>()
+    .AddHttpMessageHandler<CorrelationIdHandler>();
 
 // Health checks: el servicio informa si está vivo y listo
 builder.Services.AddHealthChecks()
-    .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" });
+    .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" })
+    .AddCheck<ProductsHealthCheck>("products", tags: new[] { "ready" });
 
 // Manejo de errores: del más específico al más genérico (el Global va al final)
 builder.Services.AddExceptionHandler<NotFoundExceptionHandler>();
