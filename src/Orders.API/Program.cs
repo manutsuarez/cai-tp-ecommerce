@@ -9,6 +9,7 @@ using Orders.API.Swagger; // NUEVO
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
+using Orders.API.Clients;
 
 // Serilog se configura primero, antes que cualquier otra cosa.
 // Consola: formato legible. Archivo: JSON estructurado (carpeta logs/).
@@ -73,8 +74,19 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 // Health checks: el servicio informa si está vivo y listo
+// Llamadas a otros servicios: cada llamada saliente lleva el mismo Correlation ID del request
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddTransient<CorrelationIdHandler>();
+builder.Services.AddHttpClient<UsersClient>()
+    .AddHttpMessageHandler<CorrelationIdHandler>();
+builder.Services.AddHttpClient<ProductsClient>()
+    .AddHttpMessageHandler<CorrelationIdHandler>();
+
+// Health checks: el servicio informa si está vivo y listo
 builder.Services.AddHealthChecks()
-    .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" });
+    .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" })
+    .AddCheck<UsersHealthCheck>("users", tags: new[] { "ready" })
+    .AddCheck<ProductsHealthCheck>("products", tags: new[] { "ready" });
 
 builder.Services.AddExceptionHandler<NotFoundExceptionHandler>();
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
