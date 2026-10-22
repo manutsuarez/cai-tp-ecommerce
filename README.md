@@ -325,6 +325,7 @@ Mientras no haya lógica real, cada servicio responde con datos fijos y **tira e
 | Orders | `POST /api/orders` | algún `productoId` = todo ceros | 404 · ORD-004 |
 | Orders | `POST /api/orders` | alguna `cantidad` mayor a 10 | 422 · ORD-005 |
 | Orders | `PUT /api/orders/{id}/status` | `estado` = `Pendiente` | 409 · ORD-006 |
+| Orders | `GET /api/orders/{id}` | `id` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · ORD-007 (falla simulada) |
 | Cart | `GET`, `PUT` o `DELETE /api/cart/{userId}...` | `userId` = todo ceros | 404 · CRT-001 |
 | Cart | `POST` o `PUT .../items` | `productoId` = todo ceros | 404 · CRT-002 |
 | Cart | `POST` o `PUT .../items` | `cantidad` mayor a 10 | 422 · CRT-003 |
@@ -335,7 +336,7 @@ Mientras no haya lógica real, cada servicio responde con datos fijos y **tira e
 | Notifications | `GET /api/notifications/{userId}` | `userId` = todo ceros | 404 · NTF-003 |
 | Notifications | `GET /api/notifications/{userId}` | `userId` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · NTF-004 (falla simulada) |
 
-Para ver el 500, Products, Notifications, Users y Cart tienen un dato de prueba que lanza una falla simulada (ver las filas "falla simulada" de la tabla). El `GlobalExceptionHandler` la convierte en el código 500 de cada servicio (PRD-005, NTF-004, USR-006, CRT-005) y la registra en el log con nivel Error.
+Para ver el 500, Products, Notifications, Users, Cart y Orders tienen un dato de prueba que lanza una falla simulada (ver las filas "falla simulada" de la tabla). El `GlobalExceptionHandler` la convierte en el código 500 de cada servicio (PRD-005, NTF-004, USR-006, CRT-005, ORD-007) y la registra en el log con nivel Error.
 
 ---
 

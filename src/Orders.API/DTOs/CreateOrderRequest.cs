@@ -1,4 +1,5 @@
-﻿namespace Orders.API.DTOs;
+﻿using System.ComponentModel.DataAnnotations;
+namespace Orders.API.DTOs;
 
 /// <summary>
 /// Un producto dentro del pedido de creación de una orden.
@@ -11,6 +12,7 @@ public class OrderItemRequest
 
     /// <summary>Cantidad de unidades. Debe ser mayor a 0.</summary>
     /// <example>2</example>
+    [Range(1, int.MaxValue, ErrorMessage = "La cantidad debe ser mayor a 0.")]
     public int Cantidad { get; set; }
 }
 
