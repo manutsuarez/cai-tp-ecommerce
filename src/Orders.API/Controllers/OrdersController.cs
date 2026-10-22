@@ -12,7 +12,8 @@ namespace Orders.API.Controllers;
 /// Datos para probar errores (respuestas de prueba): id todo ceros → ORD-001;
 /// usuarioId todo ceros → ORD-003; productoId todo ceros → ORD-004;
 /// cantidad mayor a 10 → ORD-005; items vacío → ORD-002;
-/// actualizar el estado a "Pendiente" → ORD-006.
+/// actualizar el estado a "Pendiente" → ORD-006;
+/// GET con id ffffffff-ffff-ffff-ffff-ffffffffffff → ORD-007 (falla simulada).
 /// </remarks>
 [ApiController]
 [Route("api/orders")]
@@ -50,6 +51,7 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
     public IActionResult ObtenerOrden(Guid id)
     {
+        SimularErrorInterno(id);
         ValidarOrdenExiste(id);
         return Ok(CrearOrdenDeEjemplo());
     }
@@ -170,6 +172,14 @@ public class OrdersController : ControllerBase
         {
             throw new BusinessRuleException(ErrorCodes.ORD_006,
                 "La orden no puede volver al estado 'Pendiente'.");
+        }
+    }
+
+    private static void SimularErrorInterno(Guid id)
+    {
+        if (id == Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"))
+        {
+            throw new Exception("Falla simulada para probar el error 500.");
         }
     }
 
