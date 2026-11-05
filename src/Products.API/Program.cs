@@ -5,11 +5,13 @@ using Products.API.ExceptionHandlers;
 using Products.API.Exceptions;
 using Products.API.HealthChecks;
 using Products.API.Logging;
-using Products.API.Swagger; // NUEVO
+using Products.API.Swagger;
 using Products.API.Clients;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
+using Microsoft.Extensions.Options;
+using Swashbuckle.AspNetCore.SwaggerGen;
 
 // Serilog se configura primero, antes que cualquier otra cosa.
 // Consola: formato legible. Archivo: JSON estructurado (carpeta logs/).
@@ -66,12 +68,9 @@ builder.Services.AddControllers()
 builder.Services.AddOpenApi();
 
 // Swagger: arma la documentación leyendo los controladores y los comentarios ///
-builder.Services.AddSwaggerGen(options =>
-{
-    string xmlFile = typeof(Program).Assembly.GetName().Name + ".xml";
-    options.IncludeXmlComments(Path.Combine(AppContext.BaseDirectory, xmlFile));
-    options.OperationFilter<EjemplosDeErrorFilter>(); // NUEVO: ejemplos de error por código
-});
+// (la configuración está en Swagger/ConfiguracionSwagger.cs)
+builder.Services.AddSwaggerGen();
+builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfiguracionSwagger>();
 
 // Llamadas a otros servicios: cada llamada saliente lleva el mismo Correlation ID del request
 builder.Services.AddHttpContextAccessor();
