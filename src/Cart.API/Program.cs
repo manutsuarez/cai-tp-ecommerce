@@ -12,6 +12,8 @@ using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using Dapper;
+using Cart.API.Data;
 
 // Serilog se configura primero, antes que cualquier otra cosa.
 // Consola: formato legible. Archivo: JSON estructurado (carpeta logs/).
@@ -73,6 +75,12 @@ builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfiguracionSwagger>();
 
+// Persistencia: SQLite + Dapper (patrón de la cátedra).
+// Los handlers le explican a Dapper cómo leer Guid y fechas guardados como texto.
+SqlMapper.AddTypeHandler(new GuidTypeHandler());
+SqlMapper.AddTypeHandler(new DateTimeTypeHandler());
+builder.Services.AddSingleton<DatabaseInitializer>();
+
 // Llamadas a otros servicios: cada llamada saliente lleva el mismo Correlation ID del request
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<CorrelationIdHandler>();
@@ -92,6 +100,13 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+
+// Crear las tablas y cargar los datos de prueba al arrancar
+using (IServiceScope scope = app.Services.CreateScope())
+{
+    DatabaseInitializer inicializador = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
+    inicializador.Initialize();
+}
 
 // Correlation ID y log de cada request (con su duración).
 // IMPORTANTE: el UseExceptionHandler() de los errores tiene que ir DESPUÉS de estas dos líneas.
