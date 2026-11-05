@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Users.API.DTOs;
 using Users.API.Exceptions;
+using Users.API.Services;
 
 namespace Users.API.Controllers;
 
@@ -18,6 +19,13 @@ namespace Users.API.Controllers;
 [Produces("application/json")]
 public class UsersController : ControllerBase
 {
+    private readonly IUserService _userService;
+
+    public UsersController(IUserService userService)
+    {
+        _userService = userService;
+    }
+
     /// <summary>
     /// Registra un nuevo usuario.
     /// </summary>
@@ -81,6 +89,26 @@ public class UsersController : ControllerBase
         };
 
         return Ok(response);
+    }
+
+    /// <summary>
+    /// Obtiene un usuario por su ID. Uso interno entre servicios (Orders y Notifications):
+    /// no forma parte del contrato público, por eso no aparece en Swagger.
+    /// </summary>
+    /// <param name="id">ID del usuario.</param>
+    /// <response code="200">Usuario encontrado (sin PasswordHash).</response>
+    /// <response code="404">El usuario no existe.</response>
+    [HttpGet("{id:guid}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<IActionResult> GetById(Guid id)
+    {
+        UserResponse? usuario = await _userService.ObtenerPorIdAsync(id);
+        if (usuario == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(usuario);
     }
 
     // --- Validaciones de prueba (se reemplazan cuando haya lógica real) ---
