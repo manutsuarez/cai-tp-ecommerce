@@ -1,5 +1,17 @@
 @Users.API_HostAddress = http://localhost:5199
 
+### 1) Register OK → 201 (la 2.ª vez que lo mandes da USR-001, porque ya existe)
+POST {{Users.API_HostAddress}}/api/users/register
+Content-Type: application/json
+
+{
+  "nombre": "Pedro",
+  "apellido": "Gómez",
+  "email": "nuevo@email.com",
+  "password": "OtraClave456!"
+}
+
+### 2) Error 409 USR-001: email ya registrado (María está en los datos de prueba)
 POST {{Users.API_HostAddress}}/api/users/register
 Content-Type: application/json
 
@@ -10,8 +22,18 @@ Content-Type: application/json
   "password": "MiPassword123!"
 }
 
-###
+### 3) Error 400 USR-002: campos vacíos y email mal formado (los problemas salen separados por ;)
+POST {{Users.API_HostAddress}}/api/users/register
+Content-Type: application/json
 
+{
+  "nombre": "",
+  "apellido": "",
+  "email": "esto-no-es-un-email",
+  "password": "MiPassword123!"
+}
+
+### 4) Login OK → 200
 POST {{Users.API_HostAddress}}/api/users/login
 Content-Type: application/json
 
@@ -20,7 +42,56 @@ Content-Type: application/json
   "password": "MiPassword123!"
 }
 
-###
+### 5) Error 401 USR-003: contraseña incorrecta (después mandá la 4 para resetear los intentos de María)
+POST {{Users.API_HostAddress}}/api/users/login
+Content-Type: application/json
+
+{
+  "email": "maria@email.com",
+  "password": "incorrecta"
+}
+
+### 6) Error 403 USR-004: bloqueado por intentos (datos de prueba)
+POST {{Users.API_HostAddress}}/api/users/login
+Content-Type: application/json
+
+{
+  "email": "bloqueado@email.com",
+  "password": "MiPassword123!"
+}
+
+### 7) Error 403 USR-005: bloqueado manualmente por fraude (datos de prueba)
+POST {{Users.API_HostAddress}}/api/users/login
+Content-Type: application/json
+
+{
+  "email": "fraude@email.com",
+  "password": "MiPassword123!"
+}
+
+### 8) Bloqueo en vivo: mandá esta 3 veces (las 3 dan USR-003; la 3.ª bloquea al usuario)
+POST {{Users.API_HostAddress}}/api/users/login
+Content-Type: application/json
+
+{
+  "email": "nuevo@email.com",
+  "password": "incorrecta"
+}
+
+### 9) ...y después esta, con la contraseña correcta → USR-004 (ya quedó bloqueado)
+POST {{Users.API_HostAddress}}/api/users/login
+Content-Type: application/json
+
+{
+  "email": "nuevo@email.com",
+  "password": "OtraClave456!"
+}
+
+### 10) Interno: GET por id (María) → 200, sin passwordHash
+GET {{Users.API_HostAddress}}/api/users/a1b2c3d4-0000-0000-0000-111122223333
+
+### 11) Interno: GET por id inexistente → 404
+GET {{Users.API_HostAddress}}/api/users/99999999-9999-9999-9999-999999999999
 
 ### Health check con un Correlation ID propio
 GET https://localhost:7198/health
