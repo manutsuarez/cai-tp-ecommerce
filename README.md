@@ -313,8 +313,8 @@ Mientras no haya lógica real, cada servicio responde con datos fijos y **tira e
 | Products | `DELETE /api/products/{id}` | `id` = `11111111-1111-1111-1111-111111111111` | 409 · PRD-004 |
 | Products | `POST` o `PUT` | precio 0, nombre vacío, etc. | 400 · PRD-002 |
 | Products | `GET /api/products/{id}` | `id` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · PRD-005 (falla simulada) |
-| Users | `POST /api/users/register` | `email` = `existe@email.com` | 409 · USR-001 |
-| Users | `POST /api/users/login` | `password` = `incorrecta` | 401 · USR-003 |
+| Users | `POST /api/users/register` | `email` = `maria@email.com` (ya existe en los datos de prueba) | 409 · USR-001 |` | 409 · USR-001 |
+| Users | `POST /api/users/login` | contraseña incorrecta (3 seguidas bloquean al usuario → el siguiente intento da USR-004) | 401 · USR-003 |
 | Users | `POST /api/users/login` | `email` = `bloqueado@email.com` | 403 · USR-004 |
 | Users | `POST /api/users/login` | `email` = `fraude@email.com` | 403 · USR-005 |
 | Users | `register` o `login` | email mal formado o campos vacíos | 400 · USR-002 |
