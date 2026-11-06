@@ -2,6 +2,7 @@
 using Orders.API.DTOs;
 using Orders.API.Exceptions;
 using Orders.API.Models;
+using Orders.API.Services;
 
 namespace Orders.API.Controllers;
 
@@ -21,6 +22,13 @@ namespace Orders.API.Controllers;
 public class OrdersController : ControllerBase
 {
     private const int StockSimulado = 10;
+
+    private readonly IOrderService _orderService;
+
+    public OrdersController(IOrderService orderService)
+    {
+        _orderService = orderService;
+    }
 
     /// <summary>
     /// Lista las órdenes. Se puede filtrar por usuario.
@@ -121,6 +129,20 @@ public class OrdersController : ControllerBase
             FechaActualizacion = new DateTime(2024, 3, 10, 12, 0, 0, DateTimeKind.Utc)
         };
         return Ok(respuesta);
+    }
+
+    /// <summary>
+    /// Lista las órdenes que contienen un producto, con su estado. Uso interno entre servicios
+    /// (Products lo usa para PRD-004): no forma parte del contrato público, por eso no aparece en Swagger.
+    /// </summary>
+    /// <param name="productoId">ID del producto.</param>
+    /// <response code="200">Lista de órdenes (vacía si ninguna tiene ese producto).</response>
+    [HttpGet("internal/by-product/{productoId:guid}")]
+    [ApiExplorerSettings(IgnoreApi = true)]
+    public async Task<IActionResult> ListarPorProducto(Guid productoId)
+    {
+        List<OrderByProductResponse> ordenes = await _orderService.ListarPorProductoAsync(productoId);
+        return Ok(ordenes);
     }
 
     // --- Validaciones de prueba (se reemplazan cuando haya lógica real) ---
