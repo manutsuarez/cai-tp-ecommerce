@@ -156,9 +156,13 @@ Ejemplo de respuesta (`https://localhost:7172/health`):
 | Servicio | Depende de | Si no responde |
 |---|---|---|
 | Products.API | Orders.API | `Degraded` |
+| Cart.API | Products.API | `Degraded` |
+| Orders.API | Users.API y Products.API | `Degraded` |
 | Notifications.API | Users.API | `Degraded` |
 
-Users.API no llama a otros servicios, por eso su `/health/ready` equivale a `/health/live`. Las URLs de los servicios destino se configuran en `appsettings.json` (sección `Servicios`).
+Users.API no llama a otros servicios, por eso su `/health/ready` equivale a `/health/live`.
+
+Products.API y Notifications.API, además, chequean su propia base de datos SQLite (check `sqlite`). Si no pueden abrirla, el estado es `Unhealthy` (HTTP 503), porque sin base el servicio no puede trabajar. Las URLs de los servicios destino se configuran en `appsettings.json` (sección `Servicios`).
 
 Ejemplo de `https://localhost:7172/health/ready` con Orders.API apagado:
 
@@ -168,7 +172,8 @@ Ejemplo de `https://localhost:7172/health/ready` con Orders.API apagado:
   "servicio": "Products.API",
   "checks": {
     "api": "Healthy",
-    "orders": "Degraded"
+    "orders": "Degraded",
+    "sqlite": "Healthy"
   }
 }
 ```
@@ -314,16 +319,16 @@ Decisiones tomadas por el equipo donde el enunciado no define algo, o lo deja ab
 
 ## Cómo probar los errores
 
-Mientras no haya lógica real, cada servicio responde con datos fijos y **tira errores cuando recibe ciertos datos de prueba**. Así se puede ver cada código de error desde Swagger.
+Products, Users y Notifications ya tienen lógica real y guardan sus datos en SQLite: sus errores se provocan con datos reales (ver las filas de abajo). Los servicios que todavía responden con datos fijos (Orders y Cart) **tiran errores cuando reciben ciertos datos de prueba**. Esta tabla se va actualizando a medida que cada servicio pasa a tener lógica real. Los datos de prueba de cada base se crean solos la primera vez que arranca el servicio; si se quiere volver al estado inicial, alcanza con apagar el servicio y borrar su archivo `.db`.
 
 | Servicio | Pedido | Dato de prueba | Respuesta |
 |---|---|---|---|
 | Products | `GET`, `PUT` o `DELETE /api/products/{id}` | `id` = `00000000-0000-0000-0000-000000000000` | 404 · PRD-001 |
-| Products | `POST /api/products` | `nombre` = `Producto Duplicado` | 409 · PRD-003 |
-| Products | `DELETE /api/products/{id}` | `id` = `11111111-1111-1111-1111-111111111111` | 409 · PRD-004 |
+| Products | `POST /api/products` | un `nombre` y una `categoria` que ya existen (por ejemplo `Notebook Dell XPS 15` en `Electrónica`) | 409 · PRD-003 |
+| Products | `DELETE /api/products/{id}` | un producto con órdenes en estado Pendiente o Confirmada | 409 · PRD-004 (todavía no implementado: depende del endpoint interno de Orders) |
 | Products | `POST` o `PUT` | precio 0, nombre vacío, etc. | 400 · PRD-002 |
 | Products | `GET /api/products/{id}` | `id` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · PRD-005 (falla simulada) |
-| Users | `POST /api/users/register` | `email` = `maria@email.com` (ya existe en los datos de prueba) | 409 · USR-001 |` | 409 · USR-001 |
+| Users | `POST /api/users/register` | `email` = `maria@email.com` (ya existe en los datos de prueba) | 409 · USR-001 |
 | Users | `POST /api/users/login` | contraseña incorrecta (3 seguidas bloquean al usuario → el siguiente intento da USR-004) | 401 · USR-003 |
 | Users | `POST /api/users/login` | `email` = `bloqueado@email.com` | 403 · USR-004 |
 | Users | `POST /api/users/login` | `email` = `fraude@email.com` | 403 · USR-005 |
@@ -341,10 +346,12 @@ Mientras no haya lógica real, cada servicio responde con datos fijos y **tira e
 | Cart | `POST` o `PUT .../items` | `cantidad` mayor a 10 | 422 · CRT-003 |
 | Cart | `POST` o `PUT .../items` | `cantidad` 0 o negativa | 400 · CRT-004 |
 | Cart | `GET /api/cart/{userId}` | `userId` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · CRT-005 (falla simulada) |
-| Notifications | `POST /api/notifications/send` | `usuarioId` = todo ceros | 404 · NTF-001 |
+| Notifications | `POST /api/notifications/send` | `usuarioId` de un usuario que no existe, por ejemplo todo ceros (con Users.API corriendo) | 404 · NTF-001 |
 | Notifications | `POST /api/notifications/send` | `tipo` distinto de Email, Push o SMS | 400 · NTF-002 |
-| Notifications | `GET /api/notifications/{userId}` | `userId` = todo ceros | 404 · NTF-003 |
+| Notifications | `GET /api/notifications/{userId}` | un `userId` sin notificaciones, por ejemplo todo ceros | 404 · NTF-003 |
 | Notifications | `GET /api/notifications/{userId}` | `userId` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · NTF-004 (falla simulada) |
+
+Si Users.API está apagado, `POST /api/notifications/send` responde **500 · NTF-004**: una falla de otro servicio no se confunde con "usuario no encontrado".
 
 Para ver el 500, Products, Notifications, Users, Cart y Orders tienen un dato de prueba que lanza una falla simulada (ver las filas "falla simulada" de la tabla). El `GlobalExceptionHandler` la convierte en el código 500 de cada servicio (PRD-005, NTF-004, USR-006, CRT-005, ORD-007) y la registra en el log con nivel Error.
 
