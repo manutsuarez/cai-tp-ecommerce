@@ -283,22 +283,32 @@ Decisiones tomadas por el equipo donde el enunciado no define algo, o lo deja ab
 | 07/10/2026 | Los IDs son **Guid**. El JSON usa nombres en **español y camelCase**. | Así aparecen en los ejemplos del enunciado. |
 | 11/10/2026 | Las colecciones (`Items` de Cart y Order) son **`List<T>`** en vez de arrays. | A carritos y órdenes se les agregan y quitan elementos. |
 | 11/10/2026 | Los endpoints **devuelven DTOs**, nunca los modelos directamente. | Controlar qué datos salen; por ejemplo, `PasswordHash` nunca aparece en una respuesta. |
-| 11/10/2026 | Por ahora los endpoints devuelven **respuestas fijas** copiadas de los ejemplos del enunciado. | La librería de persistencia de la cátedra todavía no está disponible. |
-| 11/10/2026 | Swagger con **Swashbuckle.AspNetCore 10.3.0**, habilitado en el entorno Development. Se usa una lambda solo para configurarlo. | Es la librería que pide el enunciado; la lambda es la forma estándar de configurarla. |
+| 06/11/2026 | La persistencia usa **SQLite + Dapper**, con **una base por servicio** (`products.db`, `users.db`, etc.). Se configura en `appsettings.json` (`ConnectionStrings:DefaultConnection`). Las tablas se crean solas al arrancar y se cargan datos de prueba con los IDs del enunciado. | Seguimos el patrón del ejemplo ToDoList de la cátedra; cada servicio es dueño de sus datos, como pide una arquitectura de microservicios. |
+| 06/11/2026 | Los archivos `*.db` **no se suben al repositorio** (están en `.gitignore`). | Son datos locales de prueba; se regeneran solos al ejecutar el servicio. |
+| 06/11/2026 | En SQLite los **Guid y las fechas se guardan como texto** (fechas en ISO 8601, UTC). Un `TypeHandler` de Dapper los convierte al leer. | SQLite no tiene tipos Guid ni fecha; así las fechas siguen saliendo en UTC con "Z", como en los ejemplos del enunciado. |
+| 11/10/2026 | Swagger con **Swashbuckle.AspNetCore 10.3.0**, habilitado en el entorno Development. Se configura en una clase propia (`Swagger/ConfiguracionSwagger.cs`). | Es la librería que pide el enunciado. |
+| 06/11/2026 | El código **no usa lambdas, LINQ, `Dictionary`/`HashSet` ni `Sort`/`OrderBy` nativos**. Se usan `foreach`, `List<T>` y métodos con nombre; el orden se hace en SQL con `ORDER BY`. La configuración que suele usar lambdas también está en clases (`ConfiguracionApi`, `ConfiguracionSwagger`). | Son las mismas restricciones de la guía de ejercicios, y así todo el equipo puede explicar cada parte del código en la defensa. |
 | 11/10/2026 | `POST /api/users/login` con datos inválidos (400) → **USR-002**. | El enunciado lista el 400 pero no le asigna un código. Se reutiliza el de "datos inválidos" del mismo servicio. |
 | 11/10/2026 | `DELETE /api/cart/{userId}/items/{productId}` cuando falla (404) → **CRT-001**. | El enunciado no asigna un código para quitar un producto que no está en el carrito. |
 | 15/10/2026 | `PUT /api/orders/{id}/status` con datos inválidos (400) → **ORD-002**. | El enunciado lista ese código HTTP pero no le asigna un `errorCode`. |
 | 19/10/2026 | `POST /api/orders` no documenta un 409. | El enunciado lo lista, pero ningún `errorCode` del catálogo corresponde a ese caso. |
 | 19/10/2026 | En Cart, cualquier 400 automático (datos mal formados) usa **CRT-004**. | Es el único código 400 del catálogo de Cart. |
-| 19/10/2026 | Mientras no haya lógica real, los endpoints **tiran errores con datos de prueba** (ver tabla "Cómo probar los errores"). | Poder probar y mostrar en Swagger cada código de error antes de tener persistencia. |
+| 19/10/2026 | Mientras un servicio no tenga lógica real, sus endpoints **tiran errores con datos de prueba** (ver tabla "Cómo probar los errores"). | Poder probar y mostrar en Swagger cada código de error antes de tener persistencia. |
 | 20/10/2026 | `/health/ready` chequea los servicios de los que depende y devuelve `Degraded` (HTTP 200) si no responden. `/health/live` no depende de nadie. | Distinguir "el proceso está vivo" de "puede trabajar con normalidad". |
 | 20/10/2026 | Las llamadas entre servicios usan clientes HTTP tipados (`IHttpClientFactory`) y un `CorrelationIdHandler` que propaga el Correlation ID. | El enunciado pide propagarlo en las llamadas HTTP salientes. |
 | 20/10/2026 | Los errores de negocio se registran como Warning y los inesperados como Error, siempre con su `ErrorCode`. | Lo pide el enunciado (5.3). |
+| 06/11/2026 | Para las consultas entre servicios se usan **endpoints internos ocultos de Swagger** (`[ApiExplorerSettings(IgnoreApi = true)]`): `GET /api/users/{id}` en Users (lo usan Orders y Notifications) y `GET /api/orders/internal/by-product/{productoId}` en Orders (lo usará Products para PRD-004). | El enunciado no define cómo se consultan entre sí; así no se agregan endpoints "públicos" que no están en el contrato. |
+| 06/11/2026 | Si otro servicio falla (caído, timeout o error 500), **no se lo convierte en "no encontrado"**: el error termina en un 500 del manejador global. Solo un 404 del otro servicio se traduce al error de dominio correspondiente. | Distinguir "el dato no existe" de "no pude consultarlo". |
+| 06/11/2026 | **Crear una orden no descuenta stock.** | El enunciado no lo pide. |
+| 06/11/2026 | Las órdenes avanzan `Pendiente → Confirmada → Enviada → Entregada`. Se puede pasar a `Cancelada` solo desde `Pendiente` o `Confirmada`; cualquier otro cambio devuelve **ORD-006**. Un estado desconocido devuelve **ORD-002**. | El enunciado define los estados pero no las transiciones. |
+| 06/11/2026 | Login de Users: usuario inactivo con 3 o más intentos fallidos → **USR-004** (bloqueado); inactivo con menos de 3 → **USR-005** (desactivado). | Distinguir las dos causas con los códigos del catálogo. |
+| 06/11/2026 | El carrito se crea al agregar el primer producto. `GET` de un carrito que no existe devuelve **CRT-001**. | El enunciado no dice cuándo se crea. |
+| 06/11/2026 | Un usuario sin notificaciones recibe **NTF-003** (404) al listarlas. | Es el código del catálogo para ese caso. |
 
-### Consultas pendientes con la cátedra
-- ¿Dónde está la **librería de persistencia**? ¿Es la de SQLite + Dapper del repo de ejemplo o un paquete aparte?
-- ¿Se acepta la solución en formato **`.slnx`**, o hace falta `.sln` (y llamarla `ECommerce`)?
-- ¿Las restricciones de la guía de ejercicios (sin LINQ, lambdas, `Dictionary`) aplican al TP?
+### Consultas con la cátedra (resueltas)
+- **Librería de persistencia:** no es una librería aparte. Se sigue el patrón del ejemplo ToDoList de la cátedra (SQLite + Dapper).
+- **Formato de la solución:** se usa `ECommerce.sln`, como pide el enunciado.
+- **Lambdas, LINQ y `Dictionary`:** el equipo decidió no usarlos (ver la tabla de decisiones).
 
 ---
 
