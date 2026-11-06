@@ -6,6 +6,7 @@ using Notifications.API.ExceptionHandlers;
 using Notifications.API.Exceptions;
 using Notifications.API.HealthChecks;
 using Notifications.API.Logging;
+using Notifications.API.Services;
 using Notifications.API.Swagger;
 using Notifications.API.Configuracion;
 using Notifications.API.Clients;
@@ -52,6 +53,7 @@ SqlMapper.AddTypeHandler(new GuidTypeHandler());
 SqlMapper.AddTypeHandler(new DateTimeTypeHandler());
 builder.Services.AddSingleton<DatabaseInitializer>();
 builder.Services.AddScoped<NotificationRepository>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 
 // Llamadas a otros servicios: cada llamada saliente lleva el mismo Correlation ID del request
 builder.Services.AddHttpContextAccessor();

@@ -1,6 +1,8 @@
 @Notifications.API_HostAddress = https://localhost:7223
 
-### Registrar y simular el envío de una notificación
+# IMPORTANTE: para los pedidos de "enviar" tiene que estar corriendo también Users.API (puerto 7198).
+
+### 1) Registrar y enviar una notificación a María → 201 (necesita Users.API corriendo)
 POST {{Notifications.API_HostAddress}}/api/notifications/send
 Content-Type: application/json
 
@@ -10,20 +12,47 @@ Content-Type: application/json
   "tipo": "Email"
 }
 
-### Listar las notificaciones de un usuario
+### 2) Listar las notificaciones de María → 200 (las más nuevas primero)
 GET {{Notifications.API_HostAddress}}/api/notifications/a1b2c3d4-0000-0000-0000-111122223333
 Accept: application/json
 
-### Health check con un Correlation ID propio
-GET https://localhost:7223/health
-Accept: application/json
-X-Correlation-Id: mi-id-de-prueba-123
+### 3) Error 404 NTF-001: el usuario destinatario no existe (necesita Users.API corriendo)
+POST {{Notifications.API_HostAddress}}/api/notifications/send
+Content-Type: application/json
 
-### Error 500 NTF-004: falla interna simulada
+{
+  "usuarioId": "00000000-0000-0000-0000-000000000000",
+  "mensaje": "Mensaje de prueba",
+  "tipo": "Email"
+}
+
+### 4) Error 400 NTF-002: tipo inválido (solo Email, Push o SMS)
+POST {{Notifications.API_HostAddress}}/api/notifications/send
+Content-Type: application/json
+
+{
+  "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
+  "mensaje": "Mensaje de prueba",
+  "tipo": "Telegram"
+}
+
+### 5) Error 404 NTF-003: usuario sin notificaciones
+GET {{Notifications.API_HostAddress}}/api/notifications/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+### 6) Error 500 NTF-004: falla interna simulada
 GET {{Notifications.API_HostAddress}}/api/notifications/ffffffff-ffff-ffff-ffff-ffffffffffff
 Accept: application/json
 
-### Health ready (chequea Users) con un Correlation ID propio
+### 7) Error 500 NTF-004: Users.API caído (probar el pedido 1 con Users.API apagado)
+# No hay pedido propio: es el mismo del punto 1, pero sin levantar Users.API.
+
+### Health check con un Correlation ID propio
+GET {{Notifications.API_HostAddress}}/health
+Accept: application/json
+X-Correlation-Id: mi-id-de-prueba-123
+
+### Health ready (chequea la base y Users) con un Correlation ID propio
 GET {{Notifications.API_HostAddress}}/health/ready
 Accept: application/json
 X-Correlation-Id: prueba-propagacion-001
