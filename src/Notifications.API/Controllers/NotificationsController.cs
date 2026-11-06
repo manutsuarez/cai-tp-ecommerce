@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Notifications.API.DTOs;
-using Notifications.API.Exceptions;
 using Notifications.API.Models;
+using Notifications.API.Services;
 
 namespace Notifications.API.Controllers;
 
@@ -9,15 +9,23 @@ namespace Notifications.API.Controllers;
 /// Registro y envío simulado de notificaciones a los usuarios.
 /// </summary>
 /// <remarks>
-/// Datos para probar errores (respuestas de prueba): enviar con usuarioId todo ceros → NTF-001;
-/// listar con userId todo ceros → NTF-003; tipo distinto de Email, Push o SMS → NTF-002;
-/// listar con userId ffffffff-ffff-ffff-ffff-ffffffffffff → NTF-004 (falla simulada).
+/// Datos de prueba: la notificación del enunciado para María (usuario a1b2c3d4-0000-0000-0000-111122223333).
+/// Para enviar hace falta que Users.API esté corriendo, porque se verifica que el usuario exista.
+/// Para probar errores: enviar con un usuarioId que no existe → NTF-001; tipo distinto de Email, Push o SMS → NTF-002;
+/// listar un usuario sin notificaciones → NTF-003; listar ffffffff-ffff-ffff-ffff-ffffffffffff → NTF-004 (falla simulada).
 /// </remarks>
 [ApiController]
 [Route("api/notifications")]
 [Produces("application/json")]
 public class NotificationsController : ControllerBase
 {
+    private readonly INotificationService _notificationService;
+
+    public NotificationsController(INotificationService notificationService)
+    {
+        _notificationService = notificationService;
+    }
+
     /// <summary>
     /// Registra una notificación y simula su envío.
     /// </summary>
@@ -31,18 +39,9 @@ public class NotificationsController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult Enviar(EnviarNotificacionRequest pedido)
+    public async Task<IActionResult> Enviar(EnviarNotificacionRequest pedido)
     {
-        ValidarUsuarioExiste(pedido.UsuarioId);
-
-        Notification notificacion = new Notification();
-        notificacion.Id = Guid.Parse("11112222-3333-4444-5555-666677778888");
-        notificacion.UsuarioId = pedido.UsuarioId;
-        notificacion.Mensaje = pedido.Mensaje;
-        notificacion.Tipo = pedido.Tipo;
-        notificacion.Estado = "Enviada";
-        notificacion.FechaEnvio = new DateTime(2024, 3, 10, 12, 1, 0, DateTimeKind.Utc);
-
+        Notification notificacion = await _notificationService.EnviarAsync(pedido);
         return StatusCode(StatusCodes.Status201Created, notificacion);
     }
 
@@ -57,48 +56,9 @@ public class NotificationsController : ControllerBase
     [ProducesResponseType(typeof(List<Notification>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult ListarPorUsuario(Guid userId)
+    public async Task<IActionResult> ListarPorUsuario(Guid userId)
     {
-        SimularErrorInterno(userId);
-        ValidarTieneNotificaciones(userId);
-
-        Notification notificacion = new Notification();
-        notificacion.Id = Guid.Parse("11112222-3333-4444-5555-666677778888");
-        notificacion.UsuarioId = userId;
-        notificacion.Mensaje = "Su orden fue confirmada.";
-        notificacion.Tipo = "Email";
-        notificacion.Estado = "Enviada";
-        notificacion.FechaEnvio = new DateTime(2024, 3, 10, 12, 1, 0, DateTimeKind.Utc);
-
-        List<Notification> lista = new List<Notification>();
-        lista.Add(notificacion);
-        return Ok(lista);
+        List<Notification> notificaciones = await _notificationService.ListarPorUsuarioAsync(userId);
+        return Ok(notificaciones);
     }
-
-    // --- Validaciones de prueba (se reemplazan cuando haya lógica real) ---
-
-    private static void ValidarUsuarioExiste(Guid usuarioId)
-    {
-        if (usuarioId == Guid.Empty)
-        {
-            throw new NotFoundException(ErrorCodes.NTF_001, "El usuario destinatario no fue encontrado.");
-        }
-    }
-
-    private static void ValidarTieneNotificaciones(Guid userId)
-    {
-        if (userId == Guid.Empty)
-        {
-            throw new NotFoundException(ErrorCodes.NTF_003, "No se encontraron notificaciones para el usuario.");
-        }
-    }
-
-    private static void SimularErrorInterno(Guid id)
-    {
-        if (id == Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"))
-        {
-            throw new Exception("Falla simulada para probar el error 500.");
-        }
-    }
-
 }
