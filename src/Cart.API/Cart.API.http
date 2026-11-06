@@ -1,10 +1,9 @@
 @Cart.API_HostAddress = http://localhost:5230
 
-
+### 1) GET carrito de María → 200 (Notebook × 1 y Silla × 3)
 GET {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333
 
-###
-
+### 2) POST agregar 2 Notebooks → 200 (suma: queda Notebook × 3)
 POST {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items
 Content-Type: application/json
 
@@ -13,8 +12,16 @@ Content-Type: application/json
   "cantidad": 2
 }
 
-###
+### 3) Error 422 CRT-003 contando lo que ya hay: la Silla tiene stock 8, María ya tiene 3, agrega 6 → 9
+POST {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items
+Content-Type: application/json
 
+{
+  "productoId": "aaaabbbb-cccc-dddd-eeee-ffff00001111",
+  "cantidad": 6
+}
+
+### 4) PUT reemplazar la cantidad de la Notebook por 4 → 200
 PUT {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items/3fa85f64-5717-4562-b3fc-2c963f66afa6
 Content-Type: application/json
 
@@ -22,40 +29,45 @@ Content-Type: application/json
   "cantidad": 4
 }
 
-###
+### 5) Error 422 CRT-003 en el PUT: 11 Notebooks (stock 10)
+PUT {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items/3fa85f64-5717-4562-b3fc-2c963f66afa6
+Content-Type: application/json
 
+{
+  "cantidad": 11
+}
+
+### 6) DELETE quitar la Notebook → 204
 DELETE {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items/3fa85f64-5717-4562-b3fc-2c963f66afa6
 
-###
+### 7) Error 404 CRT-002: quitar un producto que no está en el carrito (la Remera)
+DELETE {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items/bbbbcccc-dddd-eeee-ffff-000011112222
 
-DELETE {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333
+### 8) POST a un usuario sin carrito (Juan) → 200: el primer POST crea el carrito
+POST {{Cart.API_HostAddress}}/api/cart/b2c3d4e5-0000-0000-0000-222233334444/items
+Content-Type: application/json
 
-###
+{
+  "productoId": "bbbbcccc-dddd-eeee-ffff-000011112222",
+  "cantidad": 1
+}
 
-### Health check con un Correlation ID propio
-GET https://localhost:7017/health
-Accept: application/json
-X-Correlation-Id: mi-id-de-prueba-123
+### 9) DELETE vaciar el carrito de Juan → 204
+DELETE {{Cart.API_HostAddress}}/api/cart/b2c3d4e5-0000-0000-0000-222233334444
 
-### Error 404 CRT-001: carrito no encontrado
-GET {{Cart.API_HostAddress}}/api/cart/00000000-0000-0000-0000-000000000000
+### 10) GET carrito de Juan → 200 con items vacío (el carrito sigue existiendo)
+GET {{Cart.API_HostAddress}}/api/cart/b2c3d4e5-0000-0000-0000-222233334444
 
-### Error 404 CRT-002: producto no encontrado
+### Error 404 CRT-001: usuario sin carrito (Laura)
+GET {{Cart.API_HostAddress}}/api/cart/c3d4e5f6-0000-0000-0000-333344445555
+
+### Error 404 CRT-002: producto que no existe en Products
 POST {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items
 Content-Type: application/json
 
 {
   "productoId": "00000000-0000-0000-0000-000000000000",
   "cantidad": 2
-}
-
-### Error 422 CRT-003: stock insuficiente
-POST {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items
-Content-Type: application/json
-
-{
-  "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "cantidad": 50
 }
 
 ### Error 400 CRT-004: cantidad inválida
@@ -67,6 +79,14 @@ Content-Type: application/json
   "cantidad": 0
 }
 
-  ### Error 500 CRT-005: falla interna simulada
+### Error 500 CRT-005: falla interna simulada
 GET {{Cart.API_HostAddress}}/api/cart/ffffffff-ffff-ffff-ffff-ffffffffffff
 Accept: application/json
+
+### Health check con un Correlation ID propio
+GET https://localhost:7017/health
+Accept: application/json
+X-Correlation-Id: mi-id-de-prueba-123
+
+### Health ready: con Products prendido, "products" tiene que dar Healthy
+GET https://localhost:7017/health/ready

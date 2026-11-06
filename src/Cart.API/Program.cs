@@ -15,6 +15,7 @@ using Serilog.Formatting.Json;
 using Swashbuckle.AspNetCore.SwaggerGen;
 using Dapper;
 using Cart.API.Data;
+using Cart.API.Services;
 
 // Serilog se configura primero, antes que cualquier otra cosa.
 // Consola: formato legible. Archivo: JSON estructurado (carpeta logs/).
@@ -52,6 +53,8 @@ builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, Configuracio
 SqlMapper.AddTypeHandler(new GuidTypeHandler());
 SqlMapper.AddTypeHandler(new DateTimeTypeHandler());
 builder.Services.AddSingleton<DatabaseInitializer>();
+builder.Services.AddScoped<CartRepository>();
+builder.Services.AddScoped<ICartService, CartService>();
 
 // Llamadas a otros servicios: cada llamada saliente lleva el mismo Correlation ID del request
 builder.Services.AddHttpContextAccessor();
