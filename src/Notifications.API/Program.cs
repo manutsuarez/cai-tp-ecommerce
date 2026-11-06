@@ -1,3 +1,4 @@
+using Dapper;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.AspNetCore.Mvc;
 using Notifications.API.DTOs;
@@ -8,6 +9,7 @@ using Notifications.API.Logging;
 using Notifications.API.Swagger;
 using Notifications.API.Configuracion;
 using Notifications.API.Clients;
+using Notifications.API.Data;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
@@ -44,6 +46,13 @@ builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfiguracionSwagger>();
 
+// Persistencia: SQLite + Dapper (patrón de la cátedra).
+// Los handlers le explican a Dapper cómo leer Guid y fechas guardados como texto.
+SqlMapper.AddTypeHandler(new GuidTypeHandler());
+SqlMapper.AddTypeHandler(new DateTimeTypeHandler());
+builder.Services.AddSingleton<DatabaseInitializer>();
+builder.Services.AddScoped<NotificationRepository>();
+
 // Llamadas a otros servicios: cada llamada saliente lleva el mismo Correlation ID del request
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<CorrelationIdHandler>();
@@ -53,7 +62,8 @@ builder.Services.AddHttpClient<UsersClient>()
 // Health checks: el servicio informa si está vivo y listo
 builder.Services.AddHealthChecks()
     .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" })
-    .AddCheck<UsersHealthCheck>("users", tags: new[] { "ready" });
+    .AddCheck<UsersHealthCheck>("users", tags: new[] { "ready" })
+    .AddCheck<SqliteHealthCheck>("sqlite", tags: new[] { "ready" });
 
 builder.Services.AddExceptionHandler<NotFoundExceptionHandler>();
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
@@ -62,6 +72,13 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+
+// Crear la tabla y cargar los datos de prueba al arrancar
+using (IServiceScope scope = app.Services.CreateScope())
+{
+    DatabaseInitializer inicializador = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
+    inicializador.Initialize();
+}
 
 // Correlation ID y log de cada request (con su duración).
 // IMPORTANTE: el UseExceptionHandler() de los errores tiene que ir DESPUÉS de estas dos líneas.
