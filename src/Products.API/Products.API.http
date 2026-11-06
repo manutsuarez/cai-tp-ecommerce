@@ -1,26 +1,34 @@
 @Products.API_HostAddress = https://localhost:7172
 
-### Listar productos
+### 1) Listar todos los productos (los 3 de prueba, ordenados por nombre)
 GET {{Products.API_HostAddress}}/api/products
 Accept: application/json
 
-### Obtener un producto por id
+### 2) Listar filtrando por categoría
+GET {{Products.API_HostAddress}}/api/products?categoria=Electrónica
+Accept: application/json
+
+### 3) Listar filtrando por nombre (busca "Notebook" dentro del nombre)
+GET {{Products.API_HostAddress}}/api/products?nombre=Notebook
+Accept: application/json
+
+### 4) Obtener la Notebook del enunciado → 200
 GET {{Products.API_HostAddress}}/api/products/3fa85f64-5717-4562-b3fc-2c963f66afa6
 Accept: application/json
 
-### Crear un producto
+### 5) Crear un producto → 201 (la 2.ª vez que lo mandes da PRD-003, porque ya existe)
 POST {{Products.API_HostAddress}}/api/products
 Content-Type: application/json
 
 {
-  "nombre": "Notebook Dell XPS 15",
-  "descripcion": "Laptop 15 pulgadas, 32GB RAM",
-  "precio": 1500.00,
-  "stock": 10,
+  "nombre": "Mouse Inalámbrico",
+  "descripcion": "Mouse óptico 2.4 GHz",
+  "precio": 25.50,
+  "stock": 30,
   "categoria": "Electrónica"
 }
 
-### Actualizar un producto
+### 6) Actualizar la Notebook → 200 (se puede mandar varias veces)
 PUT {{Products.API_HostAddress}}/api/products/3fa85f64-5717-4562-b3fc-2c963f66afa6
 Content-Type: application/json
 
@@ -32,36 +40,41 @@ Content-Type: application/json
   "categoria": "Electrónica"
 }
 
-### Eliminar un producto
-DELETE {{Products.API_HostAddress}}/api/products/3fa85f64-5717-4562-b3fc-2c963f66afa6
+### 7) Eliminar un producto sin órdenes (Remera Deportiva) → 204 (la 2.ª vez da PRD-001)
+DELETE {{Products.API_HostAddress}}/api/products/bbbbcccc-dddd-eeee-ffff-000011112222
 
-### Listar productos con un Correlation ID propio
-GET {{Products.API_HostAddress}}/api/products
-Accept: application/json
-X-Correlation-Id: mi-id-de-prueba-123
-
-### Health check con un Correlation ID propio
-GET {{Products.API_HostAddress}}/health
-Accept: application/json
-X-Correlation-Id: mi-id-de-prueba-123
-
-### Error 404 PRD-001: producto no encontrado
+### 8) Error 404 PRD-001: producto no encontrado
 GET {{Products.API_HostAddress}}/api/products/00000000-0000-0000-0000-000000000000
 Accept: application/json
 
-### Error 409 PRD-003: nombre duplicado
-POST {{Products.API_HostAddress}}/api/products
+### 9) Error 404 PRD-001: actualizar un producto que no existe
+PUT {{Products.API_HostAddress}}/api/products/00000000-0000-0000-0000-000000000000
 Content-Type: application/json
 
 {
-  "nombre": "Producto Duplicado",
+  "nombre": "Producto que no existe",
   "descripcion": "Prueba",
   "precio": 100.00,
   "stock": 5,
   "categoria": "Otros"
 }
 
-### Error 400 PRD-002: datos inválidos
+### 10) Error 404 PRD-001: eliminar un producto que no existe
+DELETE {{Products.API_HostAddress}}/api/products/00000000-0000-0000-0000-000000000000
+
+### 11) Error 409 PRD-003: nombre duplicado en la categoría (la Notebook ya existe en Electrónica)
+POST {{Products.API_HostAddress}}/api/products
+Content-Type: application/json
+
+{
+  "nombre": "Notebook Dell XPS 15",
+  "descripcion": "Prueba",
+  "precio": 100.00,
+  "stock": 5,
+  "categoria": "Electrónica"
+}
+
+### 12) Error 400 PRD-002: datos inválidos
 POST {{Products.API_HostAddress}}/api/products
 Content-Type: application/json
 
@@ -73,11 +86,21 @@ Content-Type: application/json
   "categoria": "Otros"
 }
 
-### Error 500 PRD-005: falla interna simulada
+### 13) Error 500 PRD-005: falla interna simulada
 GET {{Products.API_HostAddress}}/api/products/ffffffff-ffff-ffff-ffff-ffffffffffff
 Accept: application/json
 
-### Health ready (chequea Orders) con un Correlation ID propio
+### Listar productos con un Correlation ID propio
+GET {{Products.API_HostAddress}}/api/products
+Accept: application/json
+X-Correlation-Id: mi-id-de-prueba-123
+
+### Health check con un Correlation ID propio
+GET {{Products.API_HostAddress}}/health
+Accept: application/json
+X-Correlation-Id: mi-id-de-prueba-123
+
+### Health ready (chequea la base y Orders) con un Correlation ID propio
 GET {{Products.API_HostAddress}}/health/ready
 Accept: application/json
 X-Correlation-Id: prueba-propagacion-002
