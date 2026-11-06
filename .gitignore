@@ -47,3 +47,8 @@ packages/
 # =========================
 appsettings.Development.json
 appsettings.Local.json
+
+# =========================
+# Bases de datos SQLite
+# =========================
+*.db

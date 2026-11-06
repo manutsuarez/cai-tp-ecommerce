@@ -53,7 +53,7 @@ Cada servicio tiene su propia carpeta y sus propias clases. No comparten código
 
 ```
 cai-tp-ecommerce/
-├── MiniApi.slnx            # solución con todos los proyectos
+├── ECommerce.sln            # solución con todos los proyectos
 ├── README.md
 ├── docs/                   # reparto y fichas del equipo
 └── src/
@@ -103,7 +103,7 @@ Los puertos están definidos en `src/<Servicio>.API/Properties/launchSettings.js
 - **SDK de .NET 10**.
 
 ### Levantar un servicio
-1. Abrir `MiniApi.slnx` con Visual Studio.
+1. Abrir `ECommerce.sln` con Visual Studio.
 2. En el *Solution Explorer*, clic derecho sobre el servicio (por ejemplo `Users.API`) → **Set as Startup Project**.
 3. Ejecutar con el perfil **https** (botón verde ▶).
 4. La primera vez, aceptar el certificado de desarrollo HTTPS (**Yes**).
