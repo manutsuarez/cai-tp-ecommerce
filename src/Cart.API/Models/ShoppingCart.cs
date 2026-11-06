@@ -1,9 +1,10 @@
 ﻿namespace Cart.API.Models;
 
 /// <summary>
-/// Carrito de compras de un usuario.
+/// Carrito de compras de un usuario (el modelo "Cart" del Apéndice A del enunciado).
+/// Se llama ShoppingCart porque "Cart" choca con el nombre del proyecto (Cart.API).
 /// </summary>
-public class Cart
+public class ShoppingCart
 {
     /// <summary>ID del usuario dueño del carrito.</summary>
     public Guid UsuarioId { get; set; }
