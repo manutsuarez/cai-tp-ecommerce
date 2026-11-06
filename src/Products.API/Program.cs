@@ -9,6 +9,7 @@ using Products.API.Swagger;
 using Products.API.Configuracion;
 using Products.API.Clients;
 using Products.API.Data;
+using Products.API.Services;
 using Dapper;
 using Serilog;
 using Serilog.Events;
@@ -52,6 +53,7 @@ SqlMapper.AddTypeHandler(new GuidTypeHandler());
 SqlMapper.AddTypeHandler(new DateTimeTypeHandler());
 builder.Services.AddSingleton<DatabaseInitializer>();
 builder.Services.AddScoped<ProductRepository>();
+builder.Services.AddScoped<IProductService, ProductService>();
 
 // Llamadas a otros servicios: cada llamada saliente lleva el mismo Correlation ID del request
 builder.Services.AddHttpContextAccessor();
