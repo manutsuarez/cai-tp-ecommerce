@@ -1,7 +1,7 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Products.API.DTOs;
-using Products.API.Exceptions;
 using Products.API.Models;
+using Products.API.Services;
 
 namespace Products.API.Controllers;
 
@@ -9,16 +9,21 @@ namespace Products.API.Controllers;
 /// Catálogo de productos.
 /// </summary>
 /// <remarks>
-/// Datos para probar errores (respuestas de prueba): id todo ceros → PRD-001;
-/// crear un producto llamado "Producto Duplicado" → PRD-003;
-/// eliminar el id 11111111-1111-1111-1111-111111111111 → PRD-004; datos inválidos → PRD-002;
-/// obtener el id ffffffff-ffff-ffff-ffff-ffffffffffff → PRD-005 (falla simulada).
+/// Datos de prueba: la Notebook del enunciado (3fa85f64-5717-4562-b3fc-2c963f66afa6) y otros dos productos.
+/// Para probar el error 500 (PRD-005) pedir el producto ffffffff-ffff-ffff-ffff-ffffffffffff (falla simulada).
 /// </remarks>
 [ApiController]
 [Route("api/products")]
 [Produces("application/json")]
 public class ProductsController : ControllerBase
 {
+    private readonly IProductService _productService;
+
+    public ProductsController(IProductService productService)
+    {
+        _productService = productService;
+    }
+
     /// <summary>
     /// Lista los productos. Se puede filtrar por categoría y por nombre.
     /// </summary>
@@ -29,10 +34,9 @@ public class ProductsController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(List<Product>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult Listar(string? categoria, string? nombre)
+    public async Task<IActionResult> Listar(string? categoria, string? nombre)
     {
-        List<Product> productos = new List<Product>();
-        productos.Add(CrearProductoEjemplo());
+        List<Product> productos = await _productService.ListarAsync(categoria, nombre);
         return Ok(productos);
     }
 
@@ -47,13 +51,9 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(typeof(Product), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult ObtenerPorId(Guid id)
+    public async Task<IActionResult> ObtenerPorId(Guid id)
     {
-        SimularErrorInterno(id);
-        ValidarProductoExiste(id);
-
-        Product producto = CrearProductoEjemplo();
-        producto.Id = id;
+        Product producto = await _productService.ObtenerPorIdAsync(id);
         return Ok(producto);
     }
 
@@ -70,19 +70,10 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult Crear(ProductRequest producto)
+    public async Task<IActionResult> Crear(ProductRequest producto)
     {
-        ValidarNombreNoDuplicado(producto.Nombre);
-
-        Product respuesta = new Product();
-        respuesta.Id = Guid.Parse("3fa85f64-5717-4562-b3fc-2c963f66afa6");
-        respuesta.Nombre = producto.Nombre;
-        respuesta.Descripcion = producto.Descripcion;
-        respuesta.Precio = producto.Precio;
-        respuesta.Stock = producto.Stock;
-        respuesta.Categoria = producto.Categoria;
-        respuesta.FechaCreacion = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc);
-        return StatusCode(StatusCodes.Status201Created, respuesta);
+        Product creado = await _productService.CrearAsync(producto);
+        return StatusCode(StatusCodes.Status201Created, creado);
     }
 
     /// <summary>
@@ -99,19 +90,10 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult Actualizar(Guid id, ProductRequest producto)
+    public async Task<IActionResult> Actualizar(Guid id, ProductRequest producto)
     {
-        ValidarProductoExiste(id);
-
-        Product respuesta = new Product();
-        respuesta.Id = id;
-        respuesta.Nombre = producto.Nombre;
-        respuesta.Descripcion = producto.Descripcion;
-        respuesta.Precio = producto.Precio;
-        respuesta.Stock = producto.Stock;
-        respuesta.Categoria = producto.Categoria;
-        respuesta.FechaCreacion = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc);
-        return Ok(respuesta);
+        Product actualizado = await _productService.ActualizarAsync(id, producto);
+        return Ok(actualizado);
     }
 
     /// <summary>
@@ -130,60 +112,9 @@ public class ProductsController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult Eliminar(Guid id)
+    public async Task<IActionResult> Eliminar(Guid id)
     {
-        ValidarProductoExiste(id);
-        ValidarSinOrdenesActivas(id);
+        await _productService.EliminarAsync(id);
         return NoContent();
-    }
-
-    private Product CrearProductoEjemplo()
-    {
-        Product producto = new Product();
-        producto.Id = Guid.Parse("3fa85f64-5717-4562-b3fc-2c963f66afa6");
-        producto.Nombre = "Notebook Dell XPS 15";
-        producto.Descripcion = "Laptop 15 pulgadas, 32GB RAM";
-        producto.Precio = 1500.00m;
-        producto.Stock = 10;
-        producto.Categoria = "Electrónica";
-        producto.FechaCreacion = new DateTime(2024, 1, 15, 10, 30, 0, DateTimeKind.Utc);
-        return producto;
-    }
-
-    // --- Validaciones de prueba (se reemplazan cuando haya lógica real) ---
-
-    private static void ValidarProductoExiste(Guid id)
-    {
-        if (id == Guid.Empty)
-        {
-            throw new NotFoundException(ErrorCodes.PRD_001, "Producto no encontrado.");
-        }
-    }
-
-    private static void ValidarNombreNoDuplicado(string nombre)
-    {
-        if (nombre == "Producto Duplicado")
-        {
-            throw new BusinessRuleException(ErrorCodes.PRD_003,
-                "Ya existe un producto con ese nombre en la categoría.");
-        }
-    }
-
-    private static void ValidarSinOrdenesActivas(Guid id)
-    {
-        if (id == Guid.Parse("11111111-1111-1111-1111-111111111111"))
-        {
-            throw new BusinessRuleException(ErrorCodes.PRD_004,
-                "El producto tiene órdenes activas y no puede eliminarse.");
-        }
-    }
-
-
-    private static void SimularErrorInterno(Guid id)
-    {
-        if (id == Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"))
-        {
-            throw new Exception("Falla simulada para probar el error 500.");
-        }
     }
 }
