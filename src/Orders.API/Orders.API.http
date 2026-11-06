@@ -43,3 +43,11 @@ Content-Type: application/json
 GET {{Orders.API_HostAddress}}/health
 Accept: application/json
 X-Correlation-Id: mi-id-de-prueba-123
+
+### Uso interno: órdenes que contienen la Notebook (tiene que traer la orden de María)
+GET {{Orders.API_HostAddress}}/api/orders/internal/by-product/3fa85f64-5717-4562-b3fc-2c963f66afa6
+Accept: application/json
+
+### Uso interno: producto sin órdenes (tiene que dar una lista vacía)
+GET {{Orders.API_HostAddress}}/api/orders/internal/by-product/bbbbcccc-dddd-eeee-ffff-000011112222
+Accept: application/json

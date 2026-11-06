@@ -13,6 +13,9 @@ using Serilog.Formatting.Json;
 using Orders.API.Clients;
 using Microsoft.Extensions.Options;
 using Swashbuckle.AspNetCore.SwaggerGen;
+using Orders.API.Data;
+using Orders.API.Services;
+using Dapper;
 
 // Serilog se configura primero, antes que cualquier otra cosa.
 // Consola: formato legible. Archivo: JSON estructurado (carpeta logs/).
@@ -44,7 +47,14 @@ builder.Services.AddOpenApi();
 builder.Services.AddSwaggerGen();
 builder.Services.AddTransient<IConfigureOptions<SwaggerGenOptions>, ConfiguracionSwagger>();
 
-// Health checks: el servicio informa si está vivo y listo
+// Persistencia: SQLite + Dapper (patrón de la cátedra).
+// Los handlers le explican a Dapper cómo leer Guid y fechas guardados como texto.
+SqlMapper.AddTypeHandler(new GuidTypeHandler());
+SqlMapper.AddTypeHandler(new DateTimeTypeHandler());
+builder.Services.AddSingleton<DatabaseInitializer>();
+builder.Services.AddScoped<OrderRepository>();
+builder.Services.AddScoped<IOrderService, OrderService>();
+
 // Llamadas a otros servicios: cada llamada saliente lleva el mismo Correlation ID del request
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddTransient<CorrelationIdHandler>();
@@ -57,7 +67,8 @@ builder.Services.AddHttpClient<ProductsClient>()
 builder.Services.AddHealthChecks()
     .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" })
     .AddCheck<UsersHealthCheck>("users", tags: new[] { "ready" })
-    .AddCheck<ProductsHealthCheck>("products", tags: new[] { "ready" });
+    .AddCheck<ProductsHealthCheck>("products", tags: new[] { "ready" })
+    .AddCheck<SqliteHealthCheck>("sqlite", tags: new[] { "ready" });
 
 builder.Services.AddExceptionHandler<NotFoundExceptionHandler>();
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
@@ -66,6 +77,13 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
 var app = builder.Build();
+
+// Crear las tablas y cargar los datos de prueba al arrancar
+using (IServiceScope scope = app.Services.CreateScope())
+{
+    DatabaseInitializer inicializador = scope.ServiceProvider.GetRequiredService<DatabaseInitializer>();
+    inicializador.Initialize();
+}
 
 // Correlation ID y log de cada request (con su duración).
 // IMPORTANTE: el UseExceptionHandler() de los errores tiene que ir DESPUÉS de estas dos líneas.
