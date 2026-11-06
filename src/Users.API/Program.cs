@@ -6,6 +6,7 @@ using Users.API.Exceptions;
 using Users.API.HealthChecks;
 using Users.API.Logging;
 using Users.API.Swagger;
+using Users.API.Configuracion;
 using Serilog;
 using Serilog.Events;
 using Serilog.Formatting.Json;
@@ -32,40 +33,11 @@ builder.Host.UseSerilog();
 
 // Add services to the container.
 
-builder.Services.AddControllers()
-    .ConfigureApiBehaviorOptions(options =>
-    {
-        options.InvalidModelStateResponseFactory = context =>
-        {
-            List<string> mensajes = new List<string>();
-            foreach (var entrada in context.ModelState.Values)
-            {
-                foreach (var error in entrada.Errors)
-                {
-                    mensajes.Add(error.ErrorMessage);
-                }
-            }
+builder.Services.AddControllers();
 
-            Log.Warning("Datos inválidos. ErrorCode {ErrorCode}: {ErrorMessage}", ErrorCodes.USR_002, string.Join("; ", mensajes));
-
-            ErrorResponse respuesta = new ErrorResponse
-            {
-                Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1",
-                Title = "Bad Request",
-                Status = StatusCodes.Status400BadRequest,
-                Detail = "Los datos enviados son inválidos.",
-                Instance = context.HttpContext.Request.Path.Value,
-                ErrorCode = ErrorCodes.USR_002,
-                ErrorMessage = string.Join("; ", mensajes),
-                CorrelationId = context.HttpContext.Items["X-Correlation-Id"] as string
-            };
-
-            return new ObjectResult(respuesta)
-            {
-                StatusCode = StatusCodes.Status400BadRequest
-            };
-        };
-    });
+// Respuesta 400 cuando el body no pasa las validaciones (Data Annotations).
+// La configuración está en Configuracion/ConfiguracionApi.cs
+builder.Services.AddTransient<IConfigureOptions<ApiBehaviorOptions>, ConfiguracionApi>();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 

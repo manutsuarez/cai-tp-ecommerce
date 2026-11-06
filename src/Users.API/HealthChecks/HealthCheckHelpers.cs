@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+﻿using System.Text;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
 namespace Users.API.HealthChecks;
@@ -9,20 +9,22 @@ public static class HealthCheckHelpers
     {
         context.Response.ContentType = "application/json";
 
-        Dictionary<string, string> detalle = new Dictionary<string, string>();
+        // El JSON se arma a mano con un StringBuilder (sin diccionarios):
+        // {"status":"Healthy","servicio":"Users.API","checks":{"api":"Healthy"}}
+        StringBuilder checks = new StringBuilder();
+        bool esElPrimero = true;
         foreach (KeyValuePair<string, HealthReportEntry> entrada in reporte.Entries)
         {
-            detalle[entrada.Key] = entrada.Value.Status.ToString();
+            if (!esElPrimero)
+            {
+                checks.Append(",");
+            }
+
+            checks.Append("\"" + entrada.Key + "\":\"" + entrada.Value.Status + "\"");
+            esElPrimero = false;
         }
 
-        var respuesta = new
-        {
-            status = reporte.Status.ToString(),
-            servicio = "Users.API",
-            checks = detalle
-        };
-
-        string json = JsonSerializer.Serialize(respuesta);
+        string json = "{\"status\":\"" + reporte.Status + "\",\"servicio\":\"Users.API\",\"checks\":{" + checks + "}}";
         return context.Response.WriteAsync(json);
     }
 
