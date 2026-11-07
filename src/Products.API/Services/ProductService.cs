@@ -1,4 +1,5 @@
-﻿using Products.API.Data;
+﻿using Products.API.Clients;
+using Products.API.Data;
 using Products.API.DTOs;
 using Products.API.Exceptions;
 using Products.API.Models;
@@ -13,10 +14,12 @@ namespace Products.API.Services;
 public class ProductService : IProductService
 {
     private readonly ProductRepository _repository;
+    private readonly OrdersClient _ordersClient;
 
-    public ProductService(ProductRepository repository)
+    public ProductService(ProductRepository repository, OrdersClient ordersClient)
     {
         _repository = repository;
+        _ordersClient = ordersClient;
     }
 
     // ── LISTAR ────────────────────────────────────────────────────────────
@@ -102,8 +105,13 @@ public class ProductService : IProductService
             throw new NotFoundException(ErrorCodes.PRD_001, "Producto no encontrado.");
         }
 
-        // PRD-004 (el producto tiene órdenes activas) se agrega en el siguiente PR,
-        // cuando Orders tenga su endpoint interno para consultarlo.
+        // PRD-004: no se puede eliminar un producto con órdenes en estado Pendiente o Confirmada
+        bool tieneOrdenesActivas = await _ordersClient.TieneOrdenesActivasAsync(id);
+        if (tieneOrdenesActivas)
+        {
+            throw new BusinessRuleException(ErrorCodes.PRD_004,
+                "El producto tiene órdenes activas (Pendiente o Confirmada) y no puede eliminarse.");
+        }
 
         await _repository.EliminarAsync(id);
     }
