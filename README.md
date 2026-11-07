@@ -68,11 +68,15 @@ Dentro de cada API:
 
 ```
 <Servicio>.API/
-├── Controllers/        # endpoints
+├── Controllers/        # endpoints: reciben el pedido, llaman al service y devuelven la respuesta
+├── Services/           # lógica de negocio; lanza las excepciones de dominio
+├── Data/               # acceso a la base SQLite (repositorio, inicializador y datos de prueba)
 ├── DTOs/               # lo que entra (Request) y lo que sale (Response) de cada endpoint
 ├── Models/             # entidades del dominio
 ├── Exceptions/         # excepciones de dominio y códigos de error
 ├── ExceptionHandlers/  # un IExceptionHandler por tipo de excepción
+├── Configuracion/      # respuesta 400 de las validaciones (Data Annotations)
+├── Swagger/            # configuración de Swagger y ejemplos de error
 ├── HealthChecks/       # chequeos de salud del servicio
 ├── Logging/            # middleware de Correlation ID
 ├── Clients/            # clientes HTTP hacia otros servicios y propagación del Correlation ID
@@ -111,6 +115,18 @@ Los puertos están definidos en `src/<Servicio>.API/Properties/launchSettings.js
 
 ### Levantar varios servicios a la vez
 Clic derecho sobre la solución → **Configure Startup Projects…** → **Multiple startup projects** → poner en **Start** los servicios que se quieran levantar.
+
+Algunos endpoints consultan a otros servicios, así que para probarlos tienen que estar corriendo:
+
+| Para probar | Hay que levantar |
+|---|---|
+| Carrito (`POST` y `PUT` de productos) | Cart.API y Products.API |
+| Crear una orden | Orders.API, Users.API y Products.API |
+| Enviar una notificación | Notifications.API y Users.API |
+| Eliminar un producto | Products.API y Orders.API |
+| Todo lo demás | Solo el servicio que se prueba |
+
+Si el servicio consultado está apagado, el pedido responde **500** con el código de error genérico del servicio (por ejemplo, `ORD-007`): una falla del otro servicio no se confunde con "no encontrado".
 
 ### Probar sin Swagger
 Cada proyecto tiene un archivo `<Servicio>.API.http` con pedidos de ejemplo. Se abre en Visual Studio y se usa el link **Send request** que aparece arriba de cada pedido.
@@ -162,7 +178,7 @@ Ejemplo de respuesta (`https://localhost:7172/health`):
 
 Users.API no llama a otros servicios, por eso su `/health/ready` equivale a `/health/live`.
 
-Products.API y Notifications.API, además, chequean su propia base de datos SQLite (check `sqlite`). Si no pueden abrirla, el estado es `Unhealthy` (HTTP 503), porque sin base el servicio no puede trabajar. Las URLs de los servicios destino se configuran en `appsettings.json` (sección `Servicios`).
+Products.API, Orders.API y Notifications.API, además, chequean su propia base de datos SQLite (check `sqlite`). Si no pueden abrirla, el estado es `Unhealthy` (HTTP 503), porque sin base el servicio no puede trabajar. Las URLs de los servicios destino se configuran en `appsettings.json` (sección `Servicios`).
 
 Ejemplo de `https://localhost:7172/health/ready` con Orders.API apagado:
 
@@ -302,7 +318,7 @@ Decisiones tomadas por el equipo donde el enunciado no define algo, o lo deja ab
 | 20/10/2026 | `/health/ready` chequea los servicios de los que depende y devuelve `Degraded` (HTTP 200) si no responden. `/health/live` no depende de nadie. | Distinguir "el proceso está vivo" de "puede trabajar con normalidad". |
 | 20/10/2026 | Las llamadas entre servicios usan clientes HTTP tipados (`IHttpClientFactory`) y un `CorrelationIdHandler` que propaga el Correlation ID. | El enunciado pide propagarlo en las llamadas HTTP salientes. |
 | 20/10/2026 | Los errores de negocio se registran como Warning y los inesperados como Error, siempre con su `ErrorCode`. | Lo pide el enunciado (5.3). |
-| 06/11/2026 | Para las consultas entre servicios se usan **endpoints internos ocultos de Swagger** (`[ApiExplorerSettings(IgnoreApi = true)]`): `GET /api/users/{id}` en Users (lo usan Orders y Notifications) y `GET /api/orders/internal/by-product/{productoId}` en Orders (lo usará Products para PRD-004). | El enunciado no define cómo se consultan entre sí; así no se agregan endpoints "públicos" que no están en el contrato. |
+| 06/11/2026 | Para las consultas entre servicios se usan **endpoints internos ocultos de Swagger** (`[ApiExplorerSettings(IgnoreApi = true)]`): `GET /api/users/{id}` en Users (lo usan Orders y Notifications) y `GET /api/orders/internal/by-product/{productoId}` en Orders (lo usa Products para PRD-004). | El enunciado no define cómo se consultan entre sí; así no se agregan endpoints "públicos" que no están en el contrato. |
 | 06/11/2026 | Si otro servicio falla (caído, timeout o error 500), **no se lo convierte en "no encontrado"**: el error termina en un 500 del manejador global. Solo un 404 del otro servicio se traduce al error de dominio correspondiente. | Distinguir "el dato no existe" de "no pude consultarlo". |
 | 06/11/2026 | **Crear una orden no descuenta stock.** | El enunciado no lo pide. |
 | 06/11/2026 | Las órdenes avanzan `Pendiente → Confirmada → Enviada → Entregada`. Se puede pasar a `Cancelada` solo desde `Pendiente` o `Confirmada`; cualquier otro cambio devuelve **ORD-006**. Un estado desconocido devuelve **ORD-002**. | El enunciado define los estados pero no las transiciones. |
@@ -319,13 +335,15 @@ Decisiones tomadas por el equipo donde el enunciado no define algo, o lo deja ab
 
 ## Cómo probar los errores
 
-Products, Users y Notifications ya tienen lógica real y guardan sus datos en SQLite: sus errores se provocan con datos reales (ver las filas de abajo). Los servicios que todavía responden con datos fijos (Orders y Cart) **tiran errores cuando reciben ciertos datos de prueba**. Esta tabla se va actualizando a medida que cada servicio pasa a tener lógica real. Los datos de prueba de cada base se crean solos la primera vez que arranca el servicio; si se quiere volver al estado inicial, alcanza con apagar el servicio y borrar su archivo `.db`.
+Los 5 servicios tienen lógica real y guardan sus datos en su propia base SQLite, así que cada error se provoca con datos reales (ver las filas de abajo). Los datos de prueba (los IDs del enunciado) se crean solos la primera vez que arranca cada servicio; si se quiere volver al estado inicial, alcanza con apagar el servicio y borrar su archivo `.db`.
+
+Datos de prueba que usan varias filas: la Notebook (`3fa85f64-5717-4562-b3fc-2c963f66afa6`, stock 10), la Silla (`aaaabbbb-cccc-dddd-eeee-ffff00001111`, stock 8) y la orden de María (`f1e2d3c4-0000-0000-0000-aabbccddeeff`, estado Pendiente, con 2 Notebooks).
 
 | Servicio | Pedido | Dato de prueba | Respuesta |
 |---|---|---|---|
 | Products | `GET`, `PUT` o `DELETE /api/products/{id}` | `id` = `00000000-0000-0000-0000-000000000000` | 404 · PRD-001 |
 | Products | `POST /api/products` | un `nombre` y una `categoria` que ya existen (por ejemplo `Notebook Dell XPS 15` en `Electrónica`) | 409 · PRD-003 |
-| Products | `DELETE /api/products/{id}` | un producto con órdenes en estado Pendiente o Confirmada | 409 · PRD-004 (todavía no implementado: depende del endpoint interno de Orders) |
+| Products | `DELETE /api/products/{id}` | un producto con órdenes en estado Pendiente o Confirmada | 409 · PRD-004 (por ejemplo la Notebook, que está en la orden de María; hay que tener Orders.API corriendo) |
 | Products | `POST` o `PUT` | precio 0, nombre vacío, etc. | 400 · PRD-002 |
 | Products | `GET /api/products/{id}` | `id` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · PRD-005 (falla simulada) |
 | Users | `POST /api/users/register` | `email` = `maria@email.com` (ya existe en los datos de prueba) | 409 · USR-001 |
@@ -336,14 +354,15 @@ Products, Users y Notifications ya tienen lógica real y guardan sus datos en SQ
 | Users | `POST /api/users/register` | `email` = `falla@email.com` | 500 · USR-006 (falla simulada) |
 | Orders | `GET` o `PUT /api/orders/{id}...` | `id` = todo ceros | 404 · ORD-001 |
 | Orders | `POST /api/orders` | `items` vacío | 400 · ORD-002 |
-| Orders | `POST /api/orders` | `usuarioId` = todo ceros | 404 · ORD-003 |
-| Orders | `POST /api/orders` | algún `productoId` = todo ceros | 404 · ORD-004 |
-| Orders | `POST /api/orders` | alguna `cantidad` mayor a 10 | 422 · ORD-005 |
-| Orders | `PUT /api/orders/{id}/status` | `estado` = `Pendiente` | 409 · ORD-006 |
+| Orders | `POST /api/orders` | `usuarioId` de un usuario que no existe, por ejemplo todo ceros (con Users.API corriendo) | 404 · ORD-003 |
+| Orders | `POST /api/orders` | algún `productoId` que no existe, por ejemplo todo ceros (con Products.API corriendo) | 404 · ORD-004 |
+| Orders | `POST /api/orders` | una `cantidad` mayor al stock (por ejemplo 11 Notebooks, que tienen stock 10) | 422 · ORD-005 |
+| Orders | `PUT /api/orders/{id}/status` | `estado` = `Entregada` sobre una orden Pendiente (la transición no está permitida) | 409 · ORD-006 |
+| Orders | `PUT /api/orders/{id}/status` | `estado` que no existe, por ejemplo `Volando` | 400 · ORD-002 |
 | Orders | `GET /api/orders/{id}` | `id` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · ORD-007 (falla simulada) |
 | Cart | `GET`, `PUT` o `DELETE /api/cart/{userId}...` | `userId` = todo ceros | 404 · CRT-001 |
-| Cart | `POST` o `PUT .../items` | `productoId` = todo ceros | 404 · CRT-002 |
-| Cart | `POST` o `PUT .../items` | `cantidad` mayor a 10 | 422 · CRT-003 |
+| Cart | `POST` o `PUT .../items` | un `productoId` que no existe, por ejemplo todo ceros (con Products.API corriendo) | 404 · CRT-002 |
+| Cart | `POST` o `PUT .../items` | una `cantidad` mayor al stock (por ejemplo 11 Notebooks, que tienen stock 10; en el `POST` se cuenta también lo que ya hay en el carrito) | 422 · CRT-003 |
 | Cart | `POST` o `PUT .../items` | `cantidad` 0 o negativa | 400 · CRT-004 |
 | Cart | `GET /api/cart/{userId}` | `userId` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · CRT-005 (falla simulada) |
 | Notifications | `POST /api/notifications/send` | `usuarioId` de un usuario que no existe, por ejemplo todo ceros (con Users.API corriendo) | 404 · NTF-001 |
