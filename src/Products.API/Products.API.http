@@ -40,14 +40,17 @@ Content-Type: application/json
   "categoria": "Electrónica"
 }
 
-### 7) Eliminar un producto sin órdenes (Remera Deportiva) → 204 (la 2.ª vez da PRD-001)
+### 7) Eliminar un producto sin órdenes (Remera Deportiva) → 204 (la 2.ª vez da PRD-001). Necesita Orders.API corriendo
 DELETE {{Products.API_HostAddress}}/api/products/bbbbcccc-dddd-eeee-ffff-000011112222
 
-### 8) Error 404 PRD-001: producto no encontrado
+### 8) Error 409 PRD-004: eliminar la Notebook, que tiene una orden Pendiente. Necesita Orders.API corriendo
+DELETE {{Products.API_HostAddress}}/api/products/3fa85f64-5717-4562-b3fc-2c963f66afa6
+
+### 9) Error 404 PRD-001: producto no encontrado
 GET {{Products.API_HostAddress}}/api/products/00000000-0000-0000-0000-000000000000
 Accept: application/json
 
-### 9) Error 404 PRD-001: actualizar un producto que no existe
+### 10) Error 404 PRD-001: actualizar un producto que no existe
 PUT {{Products.API_HostAddress}}/api/products/00000000-0000-0000-0000-000000000000
 Content-Type: application/json
 
@@ -59,10 +62,10 @@ Content-Type: application/json
   "categoria": "Otros"
 }
 
-### 10) Error 404 PRD-001: eliminar un producto que no existe
+### 11) Error 404 PRD-001: eliminar un producto que no existe
 DELETE {{Products.API_HostAddress}}/api/products/00000000-0000-0000-0000-000000000000
 
-### 11) Error 409 PRD-003: nombre duplicado en la categoría (la Notebook ya existe en Electrónica)
+### 12) Error 409 PRD-003: nombre duplicado en la categoría (la Notebook ya existe en Electrónica)
 POST {{Products.API_HostAddress}}/api/products
 Content-Type: application/json
 
@@ -74,7 +77,7 @@ Content-Type: application/json
   "categoria": "Electrónica"
 }
 
-### 12) Error 400 PRD-002: datos inválidos
+### 13) Error 400 PRD-002: datos inválidos
 POST {{Products.API_HostAddress}}/api/products
 Content-Type: application/json
 
@@ -86,7 +89,7 @@ Content-Type: application/json
   "categoria": "Otros"
 }
 
-### 13) Error 500 PRD-005: falla interna simulada
+### 14) Error 500 PRD-005: falla interna simulada
 GET {{Products.API_HostAddress}}/api/products/ffffffff-ffff-ffff-ffff-ffffffffffff
 Accept: application/json
 
