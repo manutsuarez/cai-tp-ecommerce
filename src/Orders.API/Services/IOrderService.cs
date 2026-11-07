@@ -19,6 +19,13 @@ public interface IOrderService
     Task<Order> ObtenerPorIdAsync(Guid id);
 
     /// <summary>
+    /// Crea una orden en estado Pendiente. Lanza ORD-002 si no tiene productos o alguna cantidad
+    /// no es mayor a 0, ORD-003 si el usuario no existe, ORD-004 si algún producto no existe
+    /// y ORD-005 si no alcanza el stock.
+    /// </summary>
+    Task<Order> CrearAsync(CreateOrderRequest request);
+
+    /// <summary>
     /// Cambia el estado de una orden. Lanza ORD-001 si no existe, ORD-002 si el estado
     /// no existe y ORD-006 si la transición no está permitida.
     /// </summary>

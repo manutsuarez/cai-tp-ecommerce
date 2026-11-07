@@ -1,6 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Orders.API.DTOs;
-using Orders.API.Exceptions;
 using Orders.API.Models;
 using Orders.API.Services;
 
@@ -12,16 +11,14 @@ namespace Orders.API.Controllers;
 /// <remarks>
 /// Datos de prueba: la orden de María (f1e2d3c4-0000-0000-0000-aabbccddeeff), en estado Pendiente.
 /// Para probar el error 500 (ORD-007) pedir la orden ffffffff-ffff-ffff-ffff-ffffffffffff (falla simulada).
-/// Crear una orden todavía responde con datos de prueba: usuarioId todo ceros → ORD-003;
-/// productoId todo ceros → ORD-004; cantidad mayor a 10 → ORD-005; items vacío → ORD-002.
+/// Para crear una orden tienen que estar levantados Users.API y Products.API:
+/// se valida el usuario (ORD-003), cada producto (ORD-004) y el stock (ORD-005).
 /// </remarks>
 [ApiController]
 [Route("api/orders")]
 [Produces("application/json")]
 public class OrdersController : ControllerBase
 {
-    private const int StockSimulado = 10;
-
     private readonly IOrderService _orderService;
 
     public OrdersController(IOrderService orderService)
@@ -80,18 +77,9 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status422UnprocessableEntity)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult CrearOrden([FromBody] CreateOrderRequest request)
+    public async Task<IActionResult> CrearOrden([FromBody] CreateOrderRequest request)
     {
-        ValidarItemsNoVacios(request);
-        ValidarUsuarioExiste(request.UsuarioId);
-
-        foreach (OrderItemRequest item in request.Items)
-        {
-            ValidarProductoExiste(item.ProductoId);
-            ValidarStock(item.Cantidad);
-        }
-
-        Order orden = CrearOrdenDeEjemplo();
+        Order orden = await _orderService.CrearAsync(request);
         return Created("/api/orders/" + orden.Id, orden);
     }
 
@@ -134,61 +122,5 @@ public class OrdersController : ControllerBase
     {
         List<OrderByProductResponse> ordenes = await _orderService.ListarPorProductoAsync(productoId);
         return Ok(ordenes);
-    }
-
-    // --- Validaciones de prueba de POST (se reemplazan en el PR de crear orden) ---
-
-    private static void ValidarItemsNoVacios(CreateOrderRequest request)
-    {
-        if (request.Items == null || request.Items.Count == 0)
-        {
-            throw new ValidationException(ErrorCodes.ORD_002, "La orden debe tener al menos un producto.");
-        }
-    }
-
-    private static void ValidarUsuarioExiste(Guid usuarioId)
-    {
-        if (usuarioId == Guid.Empty)
-        {
-            throw new NotFoundException(ErrorCodes.ORD_003, "Usuario no encontrado.");
-        }
-    }
-
-    private static void ValidarProductoExiste(Guid productoId)
-    {
-        if (productoId == Guid.Empty)
-        {
-            throw new NotFoundException(ErrorCodes.ORD_004, "Producto no encontrado.");
-        }
-    }
-
-    private static void ValidarStock(int cantidad)
-    {
-        if (cantidad > StockSimulado)
-        {
-            throw new BusinessRuleException(ErrorCodes.ORD_005,
-                "Stock insuficiente. Disponible: " + StockSimulado + ", solicitado: " + cantidad + ".");
-        }
-    }
-
-    private static Order CrearOrdenDeEjemplo()
-    {
-        OrderItem item = new OrderItem
-        {
-            ProductoId = Guid.Parse("3fa85f64-5717-4562-b3fc-2c963f66afa6"),
-            Cantidad = 2,
-            PrecioUnitario = 1500.00m
-        };
-
-        Order orden = new Order
-        {
-            Id = Guid.Parse("f1e2d3c4-0000-0000-0000-aabbccddeeff"),
-            UsuarioId = Guid.Parse("a1b2c3d4-0000-0000-0000-111122223333"),
-            Total = 3000.00m,
-            Estado = "Pendiente",
-            FechaCreacion = new DateTime(2024, 3, 10, 11, 0, 0, DateTimeKind.Utc)
-        };
-        orden.Items.Add(item);
-        return orden;
     }
 }

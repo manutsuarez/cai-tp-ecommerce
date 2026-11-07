@@ -77,3 +77,39 @@ PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/s
 Content-Type: application/json
 
 { "estado": "Pendiente" }
+
+### Crear orden: Notebook x2 (201, total 3000) - requiere Users y Products levantados
+POST {{Orders.API_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
+  "items": [{ "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "cantidad": 2 }]
+}
+
+### Crear orden: usuario inexistente (404 ORD-003)
+POST {{Orders.API_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "usuarioId": "99999999-0000-0000-0000-000000000000",
+  "items": [{ "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "cantidad": 2 }]
+}
+
+### Crear orden: producto inexistente (404 ORD-004)
+POST {{Orders.API_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
+  "items": [{ "productoId": "00000000-0000-0000-0000-000000000000", "cantidad": 2 }]
+}
+
+### Crear orden: stock insuficiente (422 ORD-005)
+POST {{Orders.API_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
+  "items": [{ "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "cantidad": 11 }]
+}
