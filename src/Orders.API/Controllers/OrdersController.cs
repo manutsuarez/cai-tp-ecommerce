@@ -10,11 +10,10 @@ namespace Orders.API.Controllers;
 /// Creación y seguimiento de órdenes de compra.
 /// </summary>
 /// <remarks>
-/// Datos para probar errores (respuestas de prueba): id todo ceros → ORD-001;
-/// usuarioId todo ceros → ORD-003; productoId todo ceros → ORD-004;
-/// cantidad mayor a 10 → ORD-005; items vacío → ORD-002;
-/// actualizar el estado a "Pendiente" → ORD-006;
-/// GET con id ffffffff-ffff-ffff-ffff-ffffffffffff → ORD-007 (falla simulada).
+/// Datos de prueba: la orden de María (f1e2d3c4-0000-0000-0000-aabbccddeeff), en estado Pendiente.
+/// Para probar el error 500 (ORD-007) pedir la orden ffffffff-ffff-ffff-ffff-ffffffffffff (falla simulada).
+/// Crear una orden todavía responde con datos de prueba: usuarioId todo ceros → ORD-003;
+/// productoId todo ceros → ORD-004; cantidad mayor a 10 → ORD-005; items vacío → ORD-002.
 /// </remarks>
 [ApiController]
 [Route("api/orders")]
@@ -39,10 +38,9 @@ public class OrdersController : ControllerBase
     [HttpGet]
     [ProducesResponseType(typeof(List<Order>), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult ObtenerOrdenes([FromQuery] Guid? usuarioId)
+    public async Task<IActionResult> ObtenerOrdenes([FromQuery] Guid? usuarioId)
     {
-        List<Order> ordenes = new List<Order>();
-        ordenes.Add(CrearOrdenDeEjemplo());
+        List<Order> ordenes = await _orderService.ListarAsync(usuarioId);
         return Ok(ordenes);
     }
 
@@ -57,11 +55,10 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(Order), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult ObtenerOrden(Guid id)
+    public async Task<IActionResult> ObtenerOrden(Guid id)
     {
-        SimularErrorInterno(id);
-        ValidarOrdenExiste(id);
-        return Ok(CrearOrdenDeEjemplo());
+        Order orden = await _orderService.ObtenerPorIdAsync(id);
+        return Ok(orden);
     }
 
     /// <summary>
@@ -103,11 +100,13 @@ public class OrdersController : ControllerBase
     /// </summary>
     /// <remarks>
     /// Estados posibles: Pendiente, Confirmada, Enviada, Entregada, Cancelada.
+    /// Transiciones permitidas: Pendiente → Confirmada → Enviada → Entregada;
+    /// Cancelada solo desde Pendiente o Confirmada. Entregada y Cancelada son finales.
     /// </remarks>
     /// <param name="id" example="f1e2d3c4-0000-0000-0000-aabbccddeeff">ID de la orden.</param>
     /// <param name="request">Nuevo estado.</param>
     /// <response code="200">Estado actualizado.</response>
-    /// <response code="400">ORD-002: Los datos de la orden son inválidos.</response>
+    /// <response code="400">ORD-002: El estado no existe.</response>
     /// <response code="404">ORD-001: Orden no encontrada.</response>
     /// <response code="409">ORD-006: El estado de la orden no puede ser modificado.</response>
     /// <response code="500">ORD-007: Error interno al procesar la orden.</response>
@@ -117,17 +116,9 @@ public class OrdersController : ControllerBase
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ErrorResponse), StatusCodes.Status500InternalServerError)]
-    public IActionResult ActualizarEstado(Guid id, [FromBody] UpdateOrderStatusRequest request)
+    public async Task<IActionResult> ActualizarEstado(Guid id, [FromBody] UpdateOrderStatusRequest request)
     {
-        ValidarOrdenExiste(id);
-        ValidarEstadoModificable(request.Estado);
-
-        OrderStatusResponse respuesta = new OrderStatusResponse
-        {
-            Id = id,
-            Estado = request.Estado,
-            FechaActualizacion = new DateTime(2024, 3, 10, 12, 0, 0, DateTimeKind.Utc)
-        };
+        OrderStatusResponse respuesta = await _orderService.ActualizarEstadoAsync(id, request.Estado);
         return Ok(respuesta);
     }
 
@@ -145,15 +136,7 @@ public class OrdersController : ControllerBase
         return Ok(ordenes);
     }
 
-    // --- Validaciones de prueba (se reemplazan cuando haya lógica real) ---
-
-    private static void ValidarOrdenExiste(Guid id)
-    {
-        if (id == Guid.Empty)
-        {
-            throw new NotFoundException(ErrorCodes.ORD_001, "Orden no encontrada.");
-        }
-    }
+    // --- Validaciones de prueba de POST (se reemplazan en el PR de crear orden) ---
 
     private static void ValidarItemsNoVacios(CreateOrderRequest request)
     {
@@ -185,23 +168,6 @@ public class OrdersController : ControllerBase
         {
             throw new BusinessRuleException(ErrorCodes.ORD_005,
                 "Stock insuficiente. Disponible: " + StockSimulado + ", solicitado: " + cantidad + ".");
-        }
-    }
-
-    private static void ValidarEstadoModificable(string estado)
-    {
-        if (estado == "Pendiente")
-        {
-            throw new BusinessRuleException(ErrorCodes.ORD_006,
-                "La orden no puede volver al estado 'Pendiente'.");
-        }
-    }
-
-    private static void SimularErrorInterno(Guid id)
-    {
-        if (id == Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"))
-        {
-            throw new Exception("Falla simulada para probar el error 500.");
         }
     }
 

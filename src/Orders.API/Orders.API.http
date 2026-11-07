@@ -51,3 +51,29 @@ Accept: application/json
 ### Uso interno: producto sin órdenes (tiene que dar una lista vacía)
 GET {{Orders.API_HostAddress}}/api/orders/internal/by-product/bbbbcccc-dddd-eeee-ffff-000011112222
 Accept: application/json
+
+### Listar órdenes de María
+GET {{Orders.API_HostAddress}}/api/orders?usuarioId=a1b2c3d4-0000-0000-0000-111122223333
+Accept: application/json
+
+### Orden inexistente (404 ORD-001)
+GET {{Orders.API_HostAddress}}/api/orders/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+### Cambiar estado: Pendiente a Confirmada (200)
+PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/status
+Content-Type: application/json
+
+{ "estado": "Confirmada" }
+
+### Cambiar estado: estado inexistente (400 ORD-002)
+PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/status
+Content-Type: application/json
+
+{ "estado": "Volando" }
+
+### Cambiar estado: transición no permitida (409 ORD-006)
+PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/status
+Content-Type: application/json
+
+{ "estado": "Pendiente" }
