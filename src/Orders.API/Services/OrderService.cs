@@ -1,4 +1,5 @@
-﻿using Orders.API.Data;
+﻿using Orders.API.Clients;
+using Orders.API.Data;
 using Orders.API.DTOs;
 using Orders.API.Exceptions;
 using Orders.API.Models;
@@ -18,10 +19,14 @@ public class OrderService : IOrderService
     private const string Cancelada = "Cancelada";
 
     private readonly OrderRepository _repository;
+    private readonly UsersClient _usersClient;
+    private readonly ProductsClient _productsClient;
 
-    public OrderService(OrderRepository repository)
+    public OrderService(OrderRepository repository, UsersClient usersClient, ProductsClient productsClient)
     {
         _repository = repository;
+        _usersClient = usersClient;
+        _productsClient = productsClient;
     }
 
     public async Task<List<Order>> ListarAsync(Guid? usuarioId)
@@ -38,6 +43,58 @@ public class OrderService : IOrderService
         {
             throw new NotFoundException(ErrorCodes.ORD_001, "Orden no encontrada.");
         }
+
+        return orden;
+    }
+
+    public async Task<Order> CrearAsync(CreateOrderRequest request)
+    {
+        ValidarItems(request);
+
+        bool existeUsuario = await _usersClient.ExisteUsuarioAsync(request.UsuarioId);
+        if (!existeUsuario)
+        {
+            throw new NotFoundException(ErrorCodes.ORD_003, "Usuario no encontrado.");
+        }
+
+        Order orden = new Order
+        {
+            Id = Guid.NewGuid(),
+            UsuarioId = request.UsuarioId,
+            Estado = Pendiente,
+            FechaCreacion = DateTime.UtcNow
+        };
+
+        decimal total = 0;
+        foreach (OrderItemRequest itemPedido in request.Items)
+        {
+            ProductResponse? producto = await _productsClient.ObtenerProductoAsync(itemPedido.ProductoId);
+            if (producto == null)
+            {
+                throw new NotFoundException(ErrorCodes.ORD_004,
+                    "Producto no encontrado: " + itemPedido.ProductoId + ".");
+            }
+
+            if (producto.Stock < itemPedido.Cantidad)
+            {
+                throw new BusinessRuleException(ErrorCodes.ORD_005,
+                    "Stock insuficiente para '" + producto.Nombre + "'. Disponible: " + producto.Stock
+                    + ", solicitado: " + itemPedido.Cantidad + ".");
+            }
+
+            OrderItem item = new OrderItem
+            {
+                ProductoId = itemPedido.ProductoId,
+                Cantidad = itemPedido.Cantidad,
+                PrecioUnitario = producto.Precio
+            };
+            orden.Items.Add(item);
+
+            total = total + (producto.Precio * itemPedido.Cantidad);
+        }
+
+        orden.Total = total;
+        await _repository.InsertarAsync(orden);
 
         return orden;
     }
@@ -83,6 +140,22 @@ public class OrderService : IOrderService
     public async Task<List<OrderByProductResponse>> ListarPorProductoAsync(Guid productoId)
     {
         return await _repository.ListarPorProductoAsync(productoId);
+    }
+
+    private static void ValidarItems(CreateOrderRequest request)
+    {
+        if (request.Items == null || request.Items.Count == 0)
+        {
+            throw new ValidationException(ErrorCodes.ORD_002, "La orden debe tener al menos un producto.");
+        }
+
+        foreach (OrderItemRequest item in request.Items)
+        {
+            if (item.Cantidad <= 0)
+            {
+                throw new ValidationException(ErrorCodes.ORD_002, "La cantidad debe ser mayor a 0.");
+            }
+        }
     }
 
     private static bool EsEstadoValido(string estado)

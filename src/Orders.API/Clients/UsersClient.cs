@@ -1,4 +1,5 @@
-﻿using Serilog;
+﻿using System.Net;
+using Serilog;
 
 namespace Orders.API.Clients;
 
@@ -25,5 +26,18 @@ public class UsersClient
             Log.Warning("No se pudo contactar a Users.API: {Motivo}", ex.Message);
             return false;
         }
+    }
+
+    public async Task<bool> ExisteUsuarioAsync(Guid usuarioId)
+    {
+        HttpResponseMessage respuesta = await _httpClient.GetAsync("/api/users/" + usuarioId);
+
+        if (respuesta.StatusCode == HttpStatusCode.NotFound)
+        {
+            return false;
+        }
+
+        respuesta.EnsureSuccessStatusCode();
+        return true;
     }
 }

@@ -64,6 +64,41 @@ public class OrderRepository
         return orden;
     }
 
+    public async Task InsertarAsync(Order orden)
+    {
+        using SqliteConnection conn = CreateConnection();
+        await conn.OpenAsync();
+        using SqliteTransaction transaccion = conn.BeginTransaction();
+
+        await conn.ExecuteAsync("""
+            INSERT INTO ordenes (Id, UsuarioId, Total, Estado, FechaCreacion)
+            VALUES (@Id, @UsuarioId, @Total, @Estado, @FechaCreacion)
+            """, new
+        {
+            Id = orden.Id.ToString(),
+            UsuarioId = orden.UsuarioId.ToString(),
+            Total = orden.Total,
+            Estado = orden.Estado,
+            FechaCreacion = orden.FechaCreacion.ToUniversalTime().ToString("O")
+        }, transaccion);
+
+        foreach (OrderItem item in orden.Items)
+        {
+            await conn.ExecuteAsync("""
+                INSERT INTO orden_items (OrdenId, ProductoId, Cantidad, PrecioUnitario)
+                VALUES (@OrdenId, @ProductoId, @Cantidad, @PrecioUnitario)
+                """, new
+            {
+                OrdenId = orden.Id.ToString(),
+                ProductoId = item.ProductoId.ToString(),
+                Cantidad = item.Cantidad,
+                PrecioUnitario = item.PrecioUnitario
+            }, transaccion);
+        }
+
+        transaccion.Commit();
+    }
+
     public async Task ActualizarEstadoAsync(Guid id, string estado, DateTime fechaActualizacion)
     {
         using SqliteConnection conn = CreateConnection();
