@@ -1,4 +1,4 @@
-@Cart.API_HostAddress = http://localhost:5230
+@Cart.API_HostAddress = https://localhost:7017
 
 ### 1) GET carrito de María → 200 (Notebook × 1 y Silla × 3)
 GET {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333
