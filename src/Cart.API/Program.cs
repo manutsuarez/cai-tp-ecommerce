@@ -63,9 +63,11 @@ builder.Services.AddHttpClient<ProductsClient>()
     .AddHttpMessageHandler<CorrelationIdHandler>();
 
 // Health checks: el servicio informa si está vivo y listo
+// ("listo" también incluye que Products y su base SQLite respondan)
 builder.Services.AddHealthChecks()
     .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" })
-    .AddCheck<ProductsHealthCheck>("products", tags: new[] { "ready" });
+    .AddCheck<ProductsHealthCheck>("products", tags: new[] { "ready" })
+    .AddCheck<SqliteHealthCheck>("sqlite", tags: new[] { "ready" });
 
 // Manejo de errores: del más específico al más genérico (el Global va al final)
 builder.Services.AddExceptionHandler<NotFoundExceptionHandler>();

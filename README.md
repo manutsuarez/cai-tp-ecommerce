@@ -176,9 +176,9 @@ Ejemplo de respuesta (`https://localhost:7172/health`):
 | Orders.API | Users.API y Products.API | `Degraded` |
 | Notifications.API | Users.API | `Degraded` |
 
-Users.API no llama a otros servicios, por eso su `/health/ready` equivale a `/health/live`.
+Users.API no llama a otros servicios: su `/health/ready` solo agrega el chequeo de su propia base.
 
-Products.API, Orders.API y Notifications.API, además, chequean su propia base de datos SQLite (check `sqlite`). Si no pueden abrirla, el estado es `Unhealthy` (HTTP 503), porque sin base el servicio no puede trabajar. Las URLs de los servicios destino se configuran en `appsettings.json` (sección `Servicios`).
+Los 5 servicios, además, chequean su propia base de datos SQLite (check `sqlite`). Si no pueden abrirla, el estado es `Unhealthy` (HTTP 503), porque sin base el servicio no puede trabajar. Las URLs de los servicios destino se configuran en `appsettings.json` (sección `Servicios`).
 
 Ejemplo de `https://localhost:7172/health/ready` con Orders.API apagado:
 
