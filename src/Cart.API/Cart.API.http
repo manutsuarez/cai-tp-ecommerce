@@ -40,7 +40,7 @@ Content-Type: application/json
 ### 6) DELETE quitar la Notebook → 204
 DELETE {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items/3fa85f64-5717-4562-b3fc-2c963f66afa6
 
-### 7) Error 404 CRT-002: quitar un producto que no está en el carrito (la Remera)
+### 7) Error 404 CRT-001: quitar un producto que no está en el carrito (la Remera) — decisión del equipo
 DELETE {{Cart.API_HostAddress}}/api/cart/a1b2c3d4-0000-0000-0000-111122223333/items/bbbbcccc-dddd-eeee-ffff-000011112222
 
 ### 8) POST a un usuario sin carrito (Juan) → 200: el primer POST crea el carrito

@@ -9,9 +9,10 @@ namespace Cart.API.Controllers;
 /// </summary>
 /// <remarks>
 /// Datos de prueba: el carrito de María (a1b2c3d4-0000-0000-0000-111122223333) con la Notebook × 1
-/// y la Silla × 3. Errores: usuario sin carrito → CRT-001; producto inexistente o que no está
-/// en el carrito → CRT-002; cantidad que supera el stock (contando lo que ya hay) → CRT-003;
-/// cantidad 0 o negativa → CRT-004; GET con userId ffffffff-ffff-ffff-ffff-ffffffffffff → CRT-005 (falla simulada).
+/// y la Silla × 3. Errores: usuario sin carrito, o quitar un producto que no está en el carrito → CRT-001;
+/// producto inexistente (o, en el PUT, que no está en el carrito) → CRT-002; cantidad que supera el stock
+/// (contando lo que ya hay) → CRT-003; cantidad 0 o negativa → CRT-004;
+/// GET con userId ffffffff-ffff-ffff-ffff-ffffffffffff → CRT-005 (falla simulada).
 /// </remarks>
 [ApiController]
 [Route("api/cart")]
@@ -94,7 +95,7 @@ public class CartController : ControllerBase
     /// <param name="userId" example="a1b2c3d4-0000-0000-0000-111122223333">ID del usuario dueño del carrito.</param>
     /// <param name="productId" example="3fa85f64-5717-4562-b3fc-2c963f66afa6">ID del producto a quitar.</param>
     /// <response code="204">Producto quitado. Sin contenido.</response>
-    /// <response code="404">CRT-001: Carrito no encontrado. / CRT-002: Producto no encontrado.</response>
+    /// <response code="404">CRT-001: Carrito no encontrado.</response>
     /// <response code="500">CRT-005: Error interno al procesar el carrito.</response>
     [HttpDelete("{userId}/items/{productId}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
