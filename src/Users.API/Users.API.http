@@ -1,4 +1,4 @@
-@Users.API_HostAddress = http://localhost:5199
+@Users.API_HostAddress = https://localhost:7198
 
 ### 1) Register OK → 201 (la 2.ª vez que lo mandes da USR-001, porque ya existe)
 POST {{Users.API_HostAddress}}/api/users/register
