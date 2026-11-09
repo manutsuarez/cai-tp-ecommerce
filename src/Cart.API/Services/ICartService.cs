@@ -21,7 +21,10 @@ public interface ICartService
     /// </summary>
     Task<CartResponse> ActualizarItemAsync(Guid usuarioId, Guid productoId, UpdateCartItemRequest request);
 
-    /// <summary>Quita un producto del carrito. Lanza CRT-001 o CRT-002.</summary>
+    /// <summary>
+    /// Quita un producto del carrito. Lanza CRT-001 si no hay carrito o si el producto
+    /// no está en el carrito (decisión del equipo, ver README).
+    /// </summary>
     Task QuitarItemAsync(Guid usuarioId, Guid productoId);
 
     /// <summary>Vacía el carrito. Lanza CRT-001.</summary>

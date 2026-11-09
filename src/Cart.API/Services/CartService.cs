@@ -70,10 +70,15 @@ public class CartService : ICartService
     }
 
     // ── DELETE: quitar un producto ────────────────────────────────────────
+    // Decisión del equipo (README, 11/10): si el producto no está en el carrito → CRT-001
     public async Task QuitarItemAsync(Guid usuarioId, Guid productoId)
     {
         ShoppingCart carrito = await ObtenerCarritoExistenteAsync(usuarioId);
-        ValidarProductoEnCarrito(carrito, productoId);
+
+        if (BuscarCantidadEnCarrito(carrito, productoId) == 0)
+        {
+            throw new NotFoundException(ErrorCodes.CRT_001, "El producto no está en el carrito.");
+        }
 
         await _repository.EliminarItemAsync(usuarioId, productoId, DateTime.UtcNow);
     }
@@ -111,7 +116,7 @@ public class CartService : ICartService
         return producto;
     }
 
-    // CRT-002 (PUT y DELETE): el producto no está en este carrito
+    // CRT-002 (PUT): el producto no está en este carrito
     private static void ValidarProductoEnCarrito(ShoppingCart carrito, Guid productoId)
     {
         if (BuscarCantidadEnCarrito(carrito, productoId) == 0)
