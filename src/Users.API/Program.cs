@@ -55,8 +55,10 @@ builder.Services.AddScoped<UserRepository>();
 builder.Services.AddScoped<IUserService, UserService>();
 
 // Health checks: el servicio informa si está vivo y listo
+// ("listo" también incluye que su base SQLite responda)
 builder.Services.AddHealthChecks()
-    .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" });
+    .AddCheck<ApiHealthCheck>("api", tags: new[] { "live", "ready" })
+    .AddCheck<SqliteHealthCheck>("sqlite", tags: new[] { "ready" });
 
 builder.Services.AddExceptionHandler<NotFoundExceptionHandler>();
 builder.Services.AddExceptionHandler<ValidationExceptionHandler>();
