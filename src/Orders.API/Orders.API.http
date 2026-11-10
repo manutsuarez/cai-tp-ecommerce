@@ -1,28 +1,69 @@
 @Orders.API_HostAddress = https://localhost:7088
 
-### Listar órdenes
+# Para crear órdenes tienen que estar levantados Users.API y Products.API.
+# El estado de las órdenes queda guardado en orders.db: para volver a empezar,
+# cerrar Orders y borrar el archivo orders.db (se crea de nuevo con la orden de María en Pendiente).
+
+### 1) Listar todas las órdenes → 200
 GET {{Orders.API_HostAddress}}/api/orders
 Accept: application/json
 
-### Obtener una orden por id
+### 2) Listar las órdenes de María → 200
+GET {{Orders.API_HostAddress}}/api/orders?usuarioId=a1b2c3d4-0000-0000-0000-111122223333
+Accept: application/json
+
+### 3) Obtener la orden de María → 200
 GET {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff
 Accept: application/json
 
-### Crear una orden
+### 4) Orden inexistente → 404 ORD-001
+GET {{Orders.API_HostAddress}}/api/orders/00000000-0000-0000-0000-000000000000
+Accept: application/json
+
+### 5) Falla simulada → 500 ORD-007
+GET {{Orders.API_HostAddress}}/api/orders/ffffffff-ffff-ffff-ffff-ffffffffffff
+Accept: application/json
+
+### 6) Crear orden: Notebook × 2 → 201 (precio traído de Products, total 3000)
+POST {{Orders.API_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
+  "items": [{ "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "cantidad": 2 }]
+}
+
+### 7) Crear orden: sin productos → 400 ORD-002
+POST {{Orders.API_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
+  "items": []
+}
+
+### 8) Crear orden: cantidad 0 → 400 ORD-002
+POST {{Orders.API_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
+  "items": [{ "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "cantidad": 0 }]
+}
+
+### 9) Crear orden: el mismo producto dos veces → 400 ORD-002
 POST {{Orders.API_HostAddress}}/api/orders
 Content-Type: application/json
 
 {
   "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
   "items": [
-    {
-      "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-      "cantidad": 2
-    }
+    { "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "cantidad": 1 },
+    { "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "cantidad": 2 }
   ]
 }
 
-### Crear una orden con un usuarioId inválido (400)
+### 10) Crear orden: usuarioId mal formado → 400 ORD-002
 POST {{Orders.API_HostAddress}}/api/orders
 Content-Type: application/json
 
@@ -31,63 +72,7 @@ Content-Type: application/json
   "items": []
 }
 
-### Actualizar el estado de una orden
-PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/status
-Content-Type: application/json
-
-{
-  "estado": "Confirmada"
-}
-
-### Health check con un Correlation ID propio
-GET {{Orders.API_HostAddress}}/health
-Accept: application/json
-X-Correlation-Id: mi-id-de-prueba-123
-
-### Uso interno: órdenes que contienen la Notebook (tiene que traer la orden de María)
-GET {{Orders.API_HostAddress}}/api/orders/internal/by-product/3fa85f64-5717-4562-b3fc-2c963f66afa6
-Accept: application/json
-
-### Uso interno: producto sin órdenes (tiene que dar una lista vacía)
-GET {{Orders.API_HostAddress}}/api/orders/internal/by-product/bbbbcccc-dddd-eeee-ffff-000011112222
-Accept: application/json
-
-### Listar órdenes de María
-GET {{Orders.API_HostAddress}}/api/orders?usuarioId=a1b2c3d4-0000-0000-0000-111122223333
-Accept: application/json
-
-### Orden inexistente (404 ORD-001)
-GET {{Orders.API_HostAddress}}/api/orders/00000000-0000-0000-0000-000000000000
-Accept: application/json
-
-### Cambiar estado: Pendiente a Confirmada (200)
-PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/status
-Content-Type: application/json
-
-{ "estado": "Confirmada" }
-
-### Cambiar estado: estado inexistente (400 ORD-002)
-PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/status
-Content-Type: application/json
-
-{ "estado": "Volando" }
-
-### Cambiar estado: transición no permitida (409 ORD-006)
-PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/status
-Content-Type: application/json
-
-{ "estado": "Pendiente" }
-
-### Crear orden: Notebook x2 (201, total 3000) - requiere Users y Products levantados
-POST {{Orders.API_HostAddress}}/api/orders
-Content-Type: application/json
-
-{
-  "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
-  "items": [{ "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "cantidad": 2 }]
-}
-
-### Crear orden: usuario inexistente (404 ORD-003)
+### 11) Crear orden: usuario inexistente → 404 ORD-003
 POST {{Orders.API_HostAddress}}/api/orders
 Content-Type: application/json
 
@@ -96,7 +81,7 @@ Content-Type: application/json
   "items": [{ "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "cantidad": 2 }]
 }
 
-### Crear orden: producto inexistente (404 ORD-004)
+### 12) Crear orden: producto inexistente → 404 ORD-004
 POST {{Orders.API_HostAddress}}/api/orders
 Content-Type: application/json
 
@@ -105,7 +90,7 @@ Content-Type: application/json
   "items": [{ "productoId": "00000000-0000-0000-0000-000000000000", "cantidad": 2 }]
 }
 
-### Crear orden: stock insuficiente (422 ORD-005)
+### 13) Crear orden: stock insuficiente → 422 ORD-005
 POST {{Orders.API_HostAddress}}/api/orders
 Content-Type: application/json
 
@@ -113,3 +98,49 @@ Content-Type: application/json
   "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
   "items": [{ "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "cantidad": 11 }]
 }
+
+### 14) Crear orden con Users o Products apagado → 500 ORD-007 (no un 404)
+POST {{Orders.API_HostAddress}}/api/orders
+Content-Type: application/json
+
+{
+  "usuarioId": "a1b2c3d4-0000-0000-0000-111122223333",
+  "items": [{ "productoId": "3fa85f64-5717-4562-b3fc-2c963f66afa6", "cantidad": 2 }]
+}
+
+### 15) Cambiar estado: estado inexistente → 400 ORD-002
+PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/status
+Content-Type: application/json
+
+{ "estado": "Volando" }
+
+### 16) Cambiar estado: orden inexistente → 404 ORD-001
+PUT {{Orders.API_HostAddress}}/api/orders/00000000-0000-0000-0000-000000000000/status
+Content-Type: application/json
+
+{ "estado": "Confirmada" }
+
+### 17) Cambiar estado: de Pendiente a Entregada (salteando pasos) → 409 ORD-006
+PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/status
+Content-Type: application/json
+
+{ "estado": "Entregada" }
+
+### 18) Cambiar estado: de Pendiente a Confirmada → 200 (la 2.ª vez da 409, porque ya está Confirmada)
+PUT {{Orders.API_HostAddress}}/api/orders/f1e2d3c4-0000-0000-0000-aabbccddeeff/status
+Content-Type: application/json
+
+{ "estado": "Confirmada" }
+
+### 19) Uso interno: órdenes que contienen la Notebook → 200 (trae la orden de María)
+GET {{Orders.API_HostAddress}}/api/orders/internal/by-product/3fa85f64-5717-4562-b3fc-2c963f66afa6
+Accept: application/json
+
+### 20) Uso interno: producto sin órdenes → 200 con lista vacía
+GET {{Orders.API_HostAddress}}/api/orders/internal/by-product/bbbbcccc-dddd-eeee-ffff-000011112222
+Accept: application/json
+
+### 21) Health ready con Correlation ID propio (con Users y Products levantados: todo Healthy)
+GET {{Orders.API_HostAddress}}/health/ready
+Accept: application/json
+X-Correlation-Id: prueba-orders-001
