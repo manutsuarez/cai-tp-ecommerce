@@ -12,6 +12,8 @@ El sistema está formado por **5 microservicios independientes**, cada uno una R
 | **Cart.API** | Carrito de compras de cada usuario: agregar, modificar, quitar y vaciar. | Rodri |
 | **Notifications.API** | Registro y envío simulado de notificaciones (Email, Push, SMS). | Manu |
 
+Cada servicio guarda sus datos en su propia base SQLite, valida lo que recibe, devuelve los errores con códigos propios (27 en total, ver "Códigos de error") y consulta a otros servicios por HTTP cuando lo necesita.
+
 ---
 
 ## Arquitectura
@@ -126,6 +128,8 @@ Algunos endpoints consultan a otros servicios, así que para probarlos tienen qu
 | Eliminar un producto | Products.API y Orders.API |
 | Todo lo demás | Solo el servicio que se prueba |
 
+Si hay que volver a prender un solo servicio mientras los otros siguen corriendo, no usar **Ctrl+F5** (el build falla porque los otros `.exe` están en uso): clic derecho sobre ese proyecto → **Debug → Start Without Debugging**.
+
 Si el servicio consultado está apagado, el pedido responde **500** con el código de error genérico del servicio (por ejemplo, `ORD-007`): una falla del otro servicio no se confunde con "no encontrado".
 
 ### Probar sin Swagger
@@ -139,6 +143,7 @@ Cada proyecto tiene un archivo `<Servicio>.API.http` con pedidos de ejemplo. Se 
 - Cada endpoint está documentado con comentarios XML (`///`): descripción, parámetros, body y **todos los códigos de respuesta** con su `errorCode`.
 - Los DTOs tienen **ejemplos** con los mismos valores que los ejemplos del enunciado.
 - Los endpoints se agrupan por servicio (tag).
+- Los dos endpoints internos que usan los servicios entre sí (`GET /api/users/{id}` y `GET /api/orders/internal/by-product/{productoId}`) no forman parte del contrato público y **no aparecen en Swagger**.
 
 ---
 
@@ -160,7 +165,8 @@ Ejemplo de respuesta (`https://localhost:7172/health`):
   "servicio": "Products.API",
   "checks": {
     "api": "Healthy",
-    "orders": "Healthy"
+    "orders": "Healthy",
+    "sqlite": "Healthy"
   }
 }
 ```
@@ -241,6 +247,9 @@ Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, c
   "correlationId": "2e550b6c-bc51-445e-9b95-88c4b964ba08"
 }
 ```
+
+**Nivel de detalle según el entorno.** Las respuestas nunca incluyen el stack trace. En los errores 500, el campo `detail` muestra el mensaje de la excepción solo cuando el servicio corre en el entorno **Development**; en cualquier otro entorno (por ejemplo Production) dice únicamente "Ocurrió un error inesperado.". El detalle completo, con el `errorCode` y el `correlationId`, queda siempre en los logs.
+
 ---
 
 ## Códigos de error
@@ -258,7 +267,7 @@ Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, c
 | errorCode | HTTP | errorMessage | Cuándo se devuelve |
 |---|---|---|---|
 | USR-001 | 409 | El email ya está registrado. | POST /register cuando el email ya existe. |
-| USR-002 | 400 | Los datos del usuario son inválidos. | POST /register con campos faltantes o formato incorrecto. |
+| USR-002 | 400 | Los datos del usuario son inválidos. | POST /register o /login con campos faltantes o formato incorrecto. |
 | USR-003 | 401 | Credenciales incorrectas. | POST /login cuando email o contraseña no coinciden. |
 | USR-004 | 403 | Usuario bloqueado por demasiados intentos fallidos. | POST /login con 3 o más intentos fallidos acumulados. |
 | USR-005 | 403 | Usuario bloqueado por detección de fraude. | POST /login cuando el usuario fue bloqueado manualmente. |
@@ -268,7 +277,7 @@ Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, c
 | errorCode | HTTP | errorMessage | Cuándo se devuelve |
 |---|---|---|---|
 | ORD-001 | 404 | Orden no encontrada. | GET/PUT cuando el ID de orden no existe. |
-| ORD-002 | 400 | Los datos de la orden son inválidos. | POST con campos faltantes o lista de items vacía. |
+| ORD-002 | 400 | Los datos de la orden son inválidos. | POST con campos faltantes o mal formados, lista de items vacía, cantidad menor o igual a cero o el mismo producto en más de una línea. PUT /status con un estado que no existe. |
 | ORD-003 | 404 | Usuario no encontrado al crear la orden. | POST cuando el UsuarioId no existe en Users API. |
 | ORD-004 | 404 | Producto no encontrado al crear la orden. | POST cuando algún ProductoId no existe en Products API. |
 | ORD-005 | 422 | Stock insuficiente para uno o más productos. | POST cuando la cantidad solicitada supera el stock disponible. |
@@ -278,8 +287,8 @@ Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, c
 ### Cart.API
 | errorCode | HTTP | errorMessage | Cuándo se devuelve |
 |---|---|---|---|
-| CRT-001 | 404 | Carrito no encontrado. | GET/PUT/DELETE cuando el userId no tiene carrito activo. |
-| CRT-002 | 404 | Producto no encontrado. | POST/PUT cuando el ProductoId no existe en Products API. |
+| CRT-001 | 404 | Carrito no encontrado. | GET/PUT/DELETE cuando el userId no tiene carrito activo; también al quitar (DELETE) un producto que no está en el carrito. |
+| CRT-002 | 404 | Producto no encontrado. | POST cuando el ProductoId no existe en Products API; PUT cuando el producto no existe o no está en el carrito. |
 | CRT-003 | 422 | Stock insuficiente para agregar al carrito. | POST/PUT cuando la cantidad supera el stock disponible. |
 | CRT-004 | 400 | Cantidad inválida. | POST/PUT cuando la cantidad es menor o igual a cero. |
 | CRT-005 | 500 | Error interno al procesar el carrito. | Error inesperado en servicio o persistencia. |
@@ -291,6 +300,8 @@ Todas las respuestas de error (4xx y 5xx) siguen el formato *Problem Details*, c
 | NTF-002 | 400 | Los datos de la notificación son inválidos. | POST con campos faltantes o tipo no reconocido. |
 | NTF-003 | 404 | No se encontraron notificaciones para el usuario. | GET cuando el userId no tiene notificaciones registradas. |
 | NTF-004 | 500 | Error interno al procesar la notificación. | Error inesperado en servicio o persistencia. |
+
+Los códigos 500 de cada servicio (PRD-005, USR-006, ORD-007, CRT-005 y NTF-004) también se devuelven cuando falla la llamada a otro servicio (apagado, sin respuesta a tiempo o con error): esa falla nunca se convierte en un 404.
 
 ---
 
@@ -304,28 +315,32 @@ Decisiones tomadas por el equipo donde el enunciado no define algo, o lo deja ab
 | 07/10/2026 | Los IDs son **Guid**. El JSON usa nombres en **español y camelCase**. | Así aparecen en los ejemplos del enunciado. |
 | 11/10/2026 | Las colecciones (`Items` de Cart y Order) son **`List<T>`** en vez de arrays. | A carritos y órdenes se les agregan y quitan elementos. |
 | 11/10/2026 | Los endpoints **devuelven DTOs**, nunca los modelos directamente. | Controlar qué datos salen; por ejemplo, `PasswordHash` nunca aparece en una respuesta. |
-| 06/11/2026 | La persistencia usa **SQLite + Dapper**, con **una base por servicio** (`products.db`, `users.db`, etc.). Se configura en `appsettings.json` (`ConnectionStrings:DefaultConnection`). Las tablas se crean solas al arrancar y se cargan datos de prueba con los IDs del enunciado. | Seguimos el patrón del ejemplo ToDoList de la cátedra; cada servicio es dueño de sus datos, como pide una arquitectura de microservicios. |
-| 06/11/2026 | Los archivos `*.db` **no se suben al repositorio** (están en `.gitignore`). | Son datos locales de prueba; se regeneran solos al ejecutar el servicio. |
-| 06/11/2026 | En SQLite los **Guid y las fechas se guardan como texto** (fechas en ISO 8601, UTC). Un `TypeHandler` de Dapper los convierte al leer. | SQLite no tiene tipos Guid ni fecha; así las fechas siguen saliendo en UTC con "Z", como en los ejemplos del enunciado. |
 | 11/10/2026 | Swagger con **Swashbuckle.AspNetCore 10.3.0**, habilitado en el entorno Development. Se configura en una clase propia (`Swagger/ConfiguracionSwagger.cs`). | Es la librería que pide el enunciado. |
-| 06/11/2026 | El código **no usa lambdas, LINQ, `Dictionary`/`HashSet` ni `Sort`/`OrderBy` nativos**. Se usan `foreach`, `List<T>` y métodos con nombre; el orden se hace en SQL con `ORDER BY`. La configuración que suele usar lambdas también está en clases (`ConfiguracionApi`, `ConfiguracionSwagger`). | Son las mismas restricciones de la guía de ejercicios, y así todo el equipo puede explicar cada parte del código en la defensa. |
 | 11/10/2026 | `POST /api/users/login` con datos inválidos (400) → **USR-002**. | El enunciado lista el 400 pero no le asigna un código. Se reutiliza el de "datos inválidos" del mismo servicio. |
 | 11/10/2026 | `DELETE /api/cart/{userId}/items/{productId}` cuando falla (404) → **CRT-001**. | El enunciado no asigna un código para quitar un producto que no está en el carrito. |
 | 15/10/2026 | `PUT /api/orders/{id}/status` con datos inválidos (400) → **ORD-002**. | El enunciado lista ese código HTTP pero no le asigna un `errorCode`. |
 | 19/10/2026 | `POST /api/orders` no documenta un 409. | El enunciado lo lista, pero ningún `errorCode` del catálogo corresponde a ese caso. |
 | 19/10/2026 | En Cart, cualquier 400 automático (datos mal formados) usa **CRT-004**. | Es el único código 400 del catálogo de Cart. |
-| 19/10/2026 | Mientras un servicio no tenga lógica real, sus endpoints **tiran errores con datos de prueba** (ver tabla "Cómo probar los errores"). | Poder probar y mostrar en Swagger cada código de error antes de tener persistencia. |
 | 20/10/2026 | `/health/ready` chequea los servicios de los que depende y devuelve `Degraded` (HTTP 200) si no responden. `/health/live` no depende de nadie. | Distinguir "el proceso está vivo" de "puede trabajar con normalidad". |
 | 20/10/2026 | Las llamadas entre servicios usan clientes HTTP tipados (`IHttpClientFactory`) y un `CorrelationIdHandler` que propaga el Correlation ID. | El enunciado pide propagarlo en las llamadas HTTP salientes. |
 | 20/10/2026 | Los errores de negocio se registran como Warning y los inesperados como Error, siempre con su `ErrorCode`. | Lo pide el enunciado (5.3). |
+| 06/11/2026 | La persistencia usa **SQLite + Dapper**, con **una base por servicio** (`products.db`, `users.db`, etc.). Se configura en `appsettings.json` (`ConnectionStrings:DefaultConnection`). Las tablas se crean solas al arrancar y se cargan datos de prueba con los IDs del enunciado. | Seguimos el patrón del ejemplo ToDoList de la cátedra; cada servicio es dueño de sus datos, como pide una arquitectura de microservicios. |
+| 06/11/2026 | Los archivos `*.db` **no se suben al repositorio** (están en `.gitignore`). | Son datos locales de prueba; se regeneran solos al ejecutar el servicio. |
+| 06/11/2026 | En SQLite los **Guid y las fechas se guardan como texto** (fechas en ISO 8601, UTC). Un `TypeHandler` de Dapper los convierte al leer. | SQLite no tiene tipos Guid ni fecha; así las fechas siguen saliendo en UTC con "Z", como en los ejemplos del enunciado. |
+| 06/11/2026 | El código **no usa lambdas, LINQ, `Dictionary`/`HashSet` ni `Sort`/`OrderBy` nativos**. Se usan `foreach`, `List<T>` y métodos con nombre; el orden se hace en SQL con `ORDER BY`. La configuración que suele usar lambdas también está en clases (`ConfiguracionApi`, `ConfiguracionSwagger`). | Son las mismas restricciones de la guía de ejercicios, y así todo el equipo puede explicar cada parte del código en la defensa. |
 | 06/11/2026 | Para las consultas entre servicios se usan **endpoints internos ocultos de Swagger** (`[ApiExplorerSettings(IgnoreApi = true)]`): `GET /api/users/{id}` en Users (lo usan Orders y Notifications) y `GET /api/orders/internal/by-product/{productoId}` en Orders (lo usa Products para PRD-004). | El enunciado no define cómo se consultan entre sí; así no se agregan endpoints "públicos" que no están en el contrato. |
 | 06/11/2026 | Si otro servicio falla (caído, timeout o error 500), **no se lo convierte en "no encontrado"**: el error termina en un 500 del manejador global. Solo un 404 del otro servicio se traduce al error de dominio correspondiente. | Distinguir "el dato no existe" de "no pude consultarlo". |
 | 06/11/2026 | **Crear una orden no descuenta stock.** | El enunciado no lo pide. |
-| 09/11/2026 | Si una orden trae **el mismo producto en más de una línea**, se rechaza con **ORD-002** (400). Hay que mandar una sola línea por producto, con la cantidad total. | El enunciado no lo define. Así el control de stock compara la cantidad total pedida y no cada línea por separado. |
 | 06/11/2026 | Las órdenes avanzan `Pendiente → Confirmada → Enviada → Entregada`. Se puede pasar a `Cancelada` solo desde `Pendiente` o `Confirmada`; cualquier otro cambio devuelve **ORD-006**. Un estado desconocido devuelve **ORD-002**. | El enunciado define los estados pero no las transiciones. |
 | 06/11/2026 | Login de Users: usuario inactivo con 3 o más intentos fallidos → **USR-004** (bloqueado); inactivo con menos de 3 → **USR-005** (desactivado). | Distinguir las dos causas con los códigos del catálogo. |
 | 06/11/2026 | El carrito se crea al agregar el primer producto. `GET` de un carrito que no existe devuelve **CRT-001**. | El enunciado no dice cuándo se crea. |
 | 06/11/2026 | Un usuario sin notificaciones recibe **NTF-003** (404) al listarlas. | Es el código del catálogo para ese caso. |
+| 09/11/2026 | Para poder mostrar el error 500, que no se produce solo, cada servicio tiene un id de prueba (`ffffffff-ffff-ffff-ffff-ffffffffffff`) que lanza una falla simulada. El resto de los errores se provoca con datos reales (ver "Cómo probar los errores"). | Poder probar y mostrar en Swagger el código de error 500 de cada servicio. |
+| 09/11/2026 | Si una orden trae **el mismo producto en más de una línea**, se rechaza con **ORD-002** (400). Hay que mandar una sola línea por producto, con la cantidad total. | El enunciado no lo define. Así el control de stock compara la cantidad total pedida y no cada línea por separado. |
+| 09/11/2026 | El envío de una notificación es simulado: se registra directamente con estado **Enviada**. Al listarlas, las más nuevas van primero. | El enunciado pide un envío simulado y no define el orden del listado. |
+| 09/11/2026 | Vaciar el carrito (`DELETE /api/cart/{userId}`) lo deja existiendo, con la lista de items vacía. | El carrito sigue siendo del usuario; el `GET` posterior responde 200 y no CRT-001. |
+| 09/11/2026 | Las contraseñas se guardan con **hash BCrypt** y `PasswordHash` nunca se devuelve. | Lo pide el enunciado y es la práctica habitual. |
+| 09/11/2026 | El duplicado de producto (PRD-003) se compara por nombre y categoría **sin distinguir mayúsculas**. | Evitar que "Mouse" y "mouse" se carguen como productos distintos. |
 
 ### Consultas con la cátedra (resueltas)
 - **Librería de persistencia:** no es una librería aparte. Se sigue el patrón del ejemplo ToDoList de la cátedra (SQLite + Dapper).
@@ -354,7 +369,7 @@ Datos de prueba que usan varias filas: la Notebook (`3fa85f64-5717-4562-b3fc-2c9
 | Users | `register` o `login` | email mal formado o campos vacíos | 400 · USR-002 |
 | Users | `POST /api/users/register` | `email` = `falla@email.com` | 500 · USR-006 (falla simulada) |
 | Orders | `GET` o `PUT /api/orders/{id}...` | `id` = todo ceros | 404 · ORD-001 |
-| Orders | `POST /api/orders` | `items` vacío | 400 · ORD-002 |
+| Orders | `POST /api/orders` | `items` vacío, o el mismo `productoId` en más de una línea | 400 · ORD-002 |
 | Orders | `POST /api/orders` | `usuarioId` de un usuario que no existe, por ejemplo todo ceros (con Users.API corriendo) | 404 · ORD-003 |
 | Orders | `POST /api/orders` | algún `productoId` que no existe, por ejemplo todo ceros (con Products.API corriendo) | 404 · ORD-004 |
 | Orders | `POST /api/orders` | una `cantidad` mayor al stock (por ejemplo 11 Notebooks, que tienen stock 10) | 422 · ORD-005 |
@@ -365,6 +380,8 @@ Datos de prueba que usan varias filas: la Notebook (`3fa85f64-5717-4562-b3fc-2c9
 | Cart | `POST` o `PUT .../items` | un `productoId` que no existe, por ejemplo todo ceros (con Products.API corriendo) | 404 · CRT-002 |
 | Cart | `POST` o `PUT .../items` | una `cantidad` mayor al stock (por ejemplo 11 Notebooks, que tienen stock 10; en el `POST` se cuenta también lo que ya hay en el carrito) | 422 · CRT-003 |
 | Cart | `POST` o `PUT .../items` | `cantidad` 0 o negativa | 400 · CRT-004 |
+| Cart | `DELETE /api/cart/{userId}/items/{productId}` | un producto que no está en el carrito | 404 · CRT-001 |
+| Cart | `PUT /api/cart/{userId}/items/{productId}` | un producto que existe pero no está en el carrito | 404 · CRT-002 |
 | Cart | `GET /api/cart/{userId}` | `userId` = `ffffffff-ffff-ffff-ffff-ffffffffffff` | 500 · CRT-005 (falla simulada) |
 | Notifications | `POST /api/notifications/send` | `usuarioId` de un usuario que no existe, por ejemplo todo ceros (con Users.API corriendo) | 404 · NTF-001 |
 | Notifications | `POST /api/notifications/send` | `tipo` distinto de Email, Push o SMS | 400 · NTF-002 |
