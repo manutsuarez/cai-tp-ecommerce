@@ -149,12 +149,21 @@ public class OrderService : IOrderService
             throw new ValidationException(ErrorCodes.ORD_002, "La orden debe tener al menos un producto.");
         }
 
+        List<Guid> productosVistos = new List<Guid>();
         foreach (OrderItemRequest item in request.Items)
         {
             if (item.Cantidad <= 0)
             {
                 throw new ValidationException(ErrorCodes.ORD_002, "La cantidad debe ser mayor a 0.");
             }
+
+            if (productosVistos.Contains(item.ProductoId))
+            {
+                throw new ValidationException(ErrorCodes.ORD_002,
+                    "El producto " + item.ProductoId + " aparece más de una vez en la orden. Indicá una sola línea con la cantidad total.");
+            }
+
+            productosVistos.Add(item.ProductoId);
         }
     }
 
