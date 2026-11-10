@@ -73,7 +73,7 @@ Dentro de cada API:
 ├── Controllers/        # endpoints: reciben el pedido, llaman al service y devuelven la respuesta
 ├── Services/           # lógica de negocio; lanza las excepciones de dominio
 ├── Data/               # acceso a la base SQLite (repositorio, inicializador y datos de prueba)
-├── DTOs/               # lo que entra (Request) y lo que sale (Response) de cada endpoint
+├── DTOs/               # pedidos (Request) y respuestas (Response) que no coinciden con un modelo
 ├── Models/             # entidades del dominio
 ├── Exceptions/         # excepciones de dominio y códigos de error
 ├── ExceptionHandlers/  # un IExceptionHandler por tipo de excepción
@@ -211,7 +211,7 @@ Los logs se generan con **Serilog** en dos lugares:
 | **Consola** | Legible: `[hora NIVEL] [Servicio] [CorrelationId] mensaje` | La ventana que se abre al ejecutar el servicio. |
 | **Archivo** | JSON estructurado, un archivo por día | `src/<Servicio>.API/logs/<servicio>-AAAAMMDD.json` (por ejemplo `logs/products-20261015.json`). |
 
-Cada log incluye fecha y hora, nivel, servicio, endpoint y Correlation ID. Se registra el inicio y el fin de cada request, con su duración.
+Cada log del archivo JSON incluye fecha y hora, nivel, servicio, endpoint y Correlation ID. La consola muestra hora, nivel, servicio y Correlation ID, y el mensaje de inicio de cada request trae el método y la ruta. Se registra el inicio y el fin de cada request, con su duración.
 
 **Errores:** cuando el log corresponde a un error, incluye también el `ErrorCode` del catálogo. Los errores de negocio y de validación (400, 401, 403, 404, 409, 422) se registran con nivel **Warning**, y los errores inesperados (500) con nivel **Error**, junto con el detalle técnico de la excepción. Ejemplo de una línea del archivo JSON:
 
@@ -314,7 +314,7 @@ Decisiones tomadas por el equipo donde el enunciado no define algo, o lo deja ab
 | 07/10/2026 | Se usan **controladores** (no Minimal API). | El enunciado pide la carpeta `Controllers/` y comentarios XML en controladores. |
 | 07/10/2026 | Los IDs son **Guid**. El JSON usa nombres en **español y camelCase**. | Así aparecen en los ejemplos del enunciado. |
 | 11/10/2026 | Las colecciones (`Items` de Cart y Order) son **`List<T>`** en vez de arrays. | A carritos y órdenes se les agregan y quitan elementos. |
-| 11/10/2026 | Los endpoints **devuelven DTOs**, nunca los modelos directamente. | Controlar qué datos salen; por ejemplo, `PasswordHash` nunca aparece en una respuesta. |
+| 11/10/2026 | Se usa un **DTO** cuando el pedido o la respuesta no tienen la misma forma que el modelo, o cuando el modelo tiene datos que no deben salir (Users: `PasswordHash`; Cart y el cambio de estado de Orders: la respuesta tiene otra forma). Products, Notifications y Orders devuelven su modelo directamente cuando ya coincide con el ejemplo del enunciado. | No duplicar clases idénticas al modelo. El JSON que sale es el del enunciado y esos modelos no tienen datos sensibles; `PasswordHash` nunca aparece en una respuesta. |
 | 11/10/2026 | Swagger con **Swashbuckle.AspNetCore 10.3.0**, habilitado en el entorno Development. Se configura en una clase propia (`Swagger/ConfiguracionSwagger.cs`). | Es la librería que pide el enunciado. |
 | 11/10/2026 | `POST /api/users/login` con datos inválidos (400) → **USR-002**. | El enunciado lista el 400 pero no le asigna un código. Se reutiliza el de "datos inválidos" del mismo servicio. |
 | 11/10/2026 | `DELETE /api/cart/{userId}/items/{productId}` cuando falla (404) → **CRT-001**. | El enunciado no asigna un código para quitar un producto que no está en el carrito. |
